@@ -1,0 +1,40 @@
+name: personal_os_workspace
+description: Personal OS monorepo workspace root.
+publish_to: none
+
+environment:
+  sdk: ">=3.11.0 <4.0.0"
+
+# Dart native workspace — list every package path explicitly.
+# Add entries here as new packages are created under packages/, features/, shared/.
+workspace:
+  - apps/mobile
+  - packages/application
+  - packages/platform_core
+  - packages/platform_runtime
+  - packages/platform_storage
+
+dev_dependencies:
+  melos: ^8.2.0
+
+# Melos 8.x: all melos configuration lives under this key (melos.yaml is kept
+# as human-readable docs but is not read by melos 8.x).
+melos:
+  scripts:
+    analyze:
+      exec:
+        command: dart analyze
+        concurrency: 4
+      description: Run dart analyze across all packages
+
+    test:
+      exec:
+        command: flutter test
+        concurrency: 2
+      description: Run tests across all packages
+
+    format:
+      exec:
+        command: dart format .
+        concurrency: 4
+      description: Format all packages

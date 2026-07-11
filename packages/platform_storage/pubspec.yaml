@@ -1,0 +1,16 @@
+name: platform_storage
+description: Personal OS Platform Storage — database abstractions, repository contracts, transactions, preferences, secure storage, file storage, and migration framework.
+version: 0.1.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ">=3.11.0 <4.0.0"
+
+dependencies:
+  platform_core: any
+  platform_runtime: any
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0

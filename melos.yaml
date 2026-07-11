@@ -1,0 +1,14 @@
+﻿# NOTE: Melos 8.x reads all configuration from the root pubspec.yaml.
+# This file is kept as human-readable documentation of the workspace structure.
+# It is NOT read by `melos` at runtime.
+#
+# Active config lives in pubspec.yaml under the `melos:` and `workspace:` keys.
+
+name: personal_os
+
+# Package discovery globs (add to pubspec.yaml `workspace:` as packages are created)
+packages:
+  - apps/**
+  - packages/**
+  - features/**
+  - shared/**

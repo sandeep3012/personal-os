@@ -1,0 +1,16 @@
+name: application
+description: Personal OS Application Layer Foundation — startup pipeline, navigation, state management, use-case base classes, validation, event markers, permissions, lifecycle, and configuration abstractions.
+version: 0.1.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: '>=3.11.0 <4.0.0'
+
+dependencies:
+  platform_core: any
+  platform_runtime: any
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0

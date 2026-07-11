@@ -1,0 +1,14 @@
+name: platform_core
+description: Personal OS Platform Core — foundational types, patterns, and abstractions shared across all packages.
+version: 0.1.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ">=3.11.0 <4.0.0"
+
+dependencies: {}
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0

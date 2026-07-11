@@ -1,0 +1,92 @@
+# ============================================================
+# Flutter / Dart
+# ============================================================
+
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.metadata
+build/
+coverage/
+.dart
+
+# Generated code
+*.g.dart
+*.freezed.dart
+*.pb.dart
+*.pbenum.dart
+*.pbgrpc.dart
+*.pbjson.dart
+
+# ============================================================
+# Pub
+# ============================================================
+
+.pub/
+.pub-cache/
+/pubspec.lock
+
+# Ignore package lockfiles, but keep the app lockfile
+packages/**/pubspec.lock
+!apps/mobile/pubspec.lock
+
+# Melos
+pubspec_overrides.yaml
+
+# ============================================================
+# IDE
+# ============================================================
+
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# ============================================================
+# Operating System
+# ============================================================
+
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ============================================================
+# Environment
+# ============================================================
+
+.env
+.env.*
+*.env
+
+# ============================================================
+# Coverage
+# ============================================================
+
+lcov.info
+
+# ============================================================
+# Claude / AI
+# ============================================================
+
+.claude/
+
+# ============================================================
+# Flutter Platform Generated Files
+# ============================================================
+
+**/android/.gradle/
+**/android/local.properties
+**/ios/Flutter/ephemeral/
+**/macos/Flutter/ephemeral/
+**/windows/flutter/ephemeral/
+
+# ============================================================
+# Keep Gradle Wrapper (DO NOT IGNORE)
+# ============================================================
+
+!**/android/gradlew
+!**/android/gradlew.bat
+!**/android/gradle/wrapper/gradle-wrapper.jar
+!**/android/gradle/wrapper/gradle-wrapper.properties
