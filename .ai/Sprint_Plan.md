@@ -1,9 +1,9 @@
 
 # Sprint Plan
 
-**Version:** v2.1  
-**Repository Version:** v0.6.0-application-foundation  
-**Current Milestone:** Application Foundation Complete — Sprint 7 Planning
+**Version:** v2.2  
+**Repository Version:** v0.7.0-feature-framework  
+**Current Milestone:** Feature Framework Complete
 
 ---
 
@@ -120,26 +120,24 @@ Status: ✅ Complete
 
 # Current Activity
 
-## Sprint 7 Planning
+## Sprint 8 Planning — First Feature Package
 
 Objective:
 
-Define and scope the Feature Framework sprint. Architecture and governance
-are fully locked at v0.6.0. Sprint 7 creates the first feature packages.
+Sprint 7 is complete. Feature Framework is stable and ready for the first
+feature package (Finance MVP per DOC-029). Sprint 8 implements the Finance
+feature using the Feature Framework.
 
-Prerequisites (all complete):
+Feature Framework is ready when:
 
-- ADR-001 Accepted (Application Layer boundaries)
-- ADR-002 Partially Accepted (AsyncState<T> approved; ADR-004 needed before UI binding)
-- ADR-003 Accepted (Navigation architecture; synchronous route registration)
-- Startup hierarchy documented (RuntimeBootstrap → StartupPipeline → StartupStep)
-- DOC-022 updated (application in packages/ list)
-- DOC-027 updated (application in repository layout)
-- DeepLink removed from packages/application
+- `FeatureModule`, `FeatureMetadata`, `FeatureRegistry`, `FeatureException` are stable ✅
+- `Feature_Template.md` documents the canonical structure ✅
+- Module registration order is documented and tested ✅
+- Analyzer clean, 129 tests passing ✅
 
 Status:
 
-🟡 Planning — Sprint 7 scope to be defined
+🟡 Planning — Sprint 8 scope (Finance MVP) to be defined
 
 ---
 
@@ -191,11 +189,50 @@ Version:
 
 ---
 
+## Sprint 7 — Feature Framework
+
+Objective:
+
+Build the reusable Feature Framework that every future feature package uses.
+No business features implemented — framework only.
+
+Delivered:
+
+- `FeatureModule` — base class for all feature packages (extends RuntimeModule)
+- `FeatureMetadata` — identity record (id, name, version, description)
+- `FeatureRegistry` — discovery catalog populated synchronously at boot
+- `FeatureException` — feature-layer error type
+- `ApplicationModule` updated — registers `FeatureRegistry` singleton
+- 37 new unit tests (129 total, all passing)
+- `docs/architecture/Feature_Template.md` — canonical feature package structure
+- `packages/application/README.md` updated
+
+Architecture decisions implemented:
+
+- Route registration: synchronous during `register()` phase (ADR-003 Section 5)
+- Module ordering: `ApplicationModule` must precede all `FeatureModule`s
+- Feature isolation: features import only `application` (never each other)
+- No UI framework binding until ADR-004 approved
+
+Status:
+
+✅ Complete
+
+Version:
+
+**v0.7.0-feature-framework**
+
+---
+
 # Future Roadmap
 
 ## v0.6.0 ✅
 
 Application Foundation (Complete)
+
+## v0.7.0 ✅
+
+Feature Framework (Complete)
 
 ## v0.7.0
 

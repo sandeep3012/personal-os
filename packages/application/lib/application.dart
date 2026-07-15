@@ -2,8 +2,8 @@
 ///
 /// The orchestration layer between Feature packages and the Platform Runtime.
 /// Provides use-case interfaces, navigation contracts, validation framework,
-/// domain event markers, permission abstractions, lifecycle hooks, and
-/// feature flag interfaces.
+/// domain event markers, permission abstractions, lifecycle hooks, feature
+/// flag interfaces, and the Feature Framework base classes.
 ///
 /// ## Architecture position
 ///
@@ -31,6 +31,7 @@
 ///
 /// ## What this package IS
 ///
+/// - Feature Framework (`FeatureModule`, `FeatureMetadata`, `FeatureRegistry`)
 /// - Use-case base interfaces
 /// - Navigation contracts (RouteRegistry, NavigationService)
 /// - Validation framework (`Validator<T>`, `ValidationResult`)
@@ -66,6 +67,12 @@ export 'src/di/application_module.dart';
 export 'src/errors/navigation_exception.dart';
 export 'src/errors/permission_exception.dart';
 export 'src/errors/use_case_exception.dart';
+
+// Features — framework base classes for all feature packages
+export 'src/features/feature_exception.dart';
+export 'src/features/feature_metadata.dart';
+export 'src/features/feature_module.dart';
+export 'src/features/feature_registry.dart';
 
 // Lifecycle (provisional — see ADR-001)
 export 'src/lifecycle/app_lifecycle_service.dart';

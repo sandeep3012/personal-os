@@ -1,9 +1,9 @@
 # Master Context
 
 **Project:** Personal OS
-**Version:** v2.0
-**Repository Version:** v0.6.0-application-foundation
-**Status:** v0.6.0 Complete — Sprint 7 Planning
+**Version:** v2.1
+**Repository Version:** v0.7.0-feature-framework
+**Status:** v0.7.0 Complete — Sprint 8 Planning (Finance MVP)
 
 ---
 
@@ -87,7 +87,7 @@ Rules:
 
 Current Version
 
-v0.6.0-application-foundation
+v0.7.0-feature-framework
 
 Completed
 
@@ -104,6 +104,7 @@ Completed
 - Web Build
 - Unit Tests
 - Application Layer Foundation (packages/application)
+- Feature Framework (FeatureModule, FeatureMetadata, FeatureRegistry)
 
 Repository Health
 
@@ -122,17 +123,17 @@ ADR Status
 
 # Current Milestone
 
-Application Layer Foundation Complete
+Feature Framework Complete
 
 ---
 
 # Current Activity
 
-Sprint 7 Planning — v0.6.0 architecture is fully locked.
+Sprint 8 Planning — Feature Framework is complete and stable.
 
 Target:
 
-Feature Framework (first feature packages)
+Finance MVP — first feature package using the Feature Framework
 
 ---
 
@@ -224,7 +225,7 @@ Current Platform SDK:
 - platform_core
 - platform_runtime
 - platform_storage
-- application (v0.6.0 — ADR-001 Accepted)
+- application (v0.7.0 — Feature Framework: FeatureModule, FeatureMetadata, FeatureRegistry)
 
 Future Platform Packages:
 

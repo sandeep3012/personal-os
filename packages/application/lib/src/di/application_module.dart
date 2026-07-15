@@ -1,3 +1,4 @@
+import 'package:application/src/features/feature_registry.dart';
 import 'package:application/src/navigation/application_router.dart';
 import 'package:application/src/routing/route_registry.dart';
 import 'package:application/src/startup/startup_pipeline.dart';
@@ -8,22 +9,29 @@ import 'package:platform_runtime/modules/runtime_module.dart';
 
 /// Registers all core application-layer services into the DI container.
 ///
-/// Add [ApplicationModule] to [RuntimeBootstrap] before calling `boot()`.
-/// The module registers:
+/// Add [ApplicationModule] to [RuntimeBootstrap] **before** any
+/// [FeatureModule]. Feature modules read [FeatureRegistry], [RouteRegistry],
+/// and [StartupPipeline] from the service locator during their own [register]
+/// phase — those singletons must already exist.
 ///
-/// | Type | Implementation |
-/// |---|---|
-/// | [IEventBus] | [EventBus] singleton (disposed on [onDispose]) |
-/// | [RouteRegistry] | Empty registry, ready for feature modules to populate |
-/// | [ApplicationRouter] | Wraps the registered [RouteRegistry] |
-/// | [StartupPipeline] | Empty pipeline, ready for steps to be added |
+/// ## Services registered
+///
+/// | Type | Implementation | Notes |
+/// |---|---|---|
+/// | [IEventBus] | [EventBus] | Disposed on [onDispose] |
+/// | [RouteRegistry] | Empty registry | Feature modules populate it |
+/// | [ApplicationRouter] | Wraps [RouteRegistry] | Platform-independent resolver |
+/// | [StartupPipeline] | Empty pipeline | Feature modules add steps |
+/// | [FeatureRegistry] | Empty catalog | Feature modules register metadata |
 ///
 /// ## Example
 ///
 /// ```dart
 /// final bootstrap = RuntimeBootstrap()
 ///   ..addModule(AppModule())
-///   ..addModule(ApplicationModule());
+///   ..addModule(ApplicationModule())   // ← must come before feature modules
+///   ..addModule(FinanceModule())
+///   ..addModule(TasksModule());
 ///
 /// await bootstrap.boot();
 /// ```
@@ -38,11 +46,13 @@ final class ApplicationModule extends RuntimeModule {
     final routeRegistry = RouteRegistry();
     final router = ApplicationRouter(registry: routeRegistry);
     final pipeline = StartupPipeline();
+    final featureRegistry = FeatureRegistry();
 
     registrar.registerSingleton<IEventBus>(bus);
     registrar.registerSingleton<RouteRegistry>(routeRegistry);
     registrar.registerSingleton<ApplicationRouter>(router);
     registrar.registerSingleton<StartupPipeline>(pipeline);
+    registrar.registerSingleton<FeatureRegistry>(featureRegistry);
   }
 
   @override
