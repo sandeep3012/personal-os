@@ -1,17 +1,18 @@
+import 'package:feature_sample/sample.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:platform_core/config/app_config.dart';
 import 'package:personal_os/app/widgets/section_card.dart';
 import 'package:personal_os/app/widgets/status_item.dart';
 
-/// The application home screen — the shell's single route ("/").
+/// The application home screen — the shell's root route ("/").
 ///
 /// Displays:
-/// - Platform status (which SDK layers have initialized)
-/// - Application version
-/// - Current build environment
+/// - Platform status (which SDK layers have initialised)
+/// - Application version and build environment
+/// - Feature navigation (links to registered features)
 ///
-/// Contains no business logic. All data comes from [AppConfig] which is
-/// resolved from the service registry at startup.
+/// Contains no business logic. Data comes from [AppConfig] resolved at startup.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.config});
 
@@ -38,6 +39,8 @@ class HomeScreen extends StatelessWidget {
                 StatusItem(label: 'Platform Core'),
                 StatusItem(label: 'Runtime'),
                 StatusItem(label: 'Storage'),
+                StatusItem(label: 'Application Layer'),
+                StatusItem(label: 'Feature Framework'),
               ],
             ),
             SectionCard(
@@ -55,6 +58,24 @@ class HomeScreen extends StatelessWidget {
                 Text(
                   config.environment.name.toUpperCase(),
                   style: theme.textTheme.bodyMedium,
+                ),
+              ],
+            ),
+            SectionCard(
+              title: 'FEATURE FRAMEWORK VALIDATION',
+              children: [
+                Text(
+                  'Tap below to navigate to the Sample feature and verify '
+                  'the Feature Framework is working end-to-end.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.outline,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: () => context.pushNamed(SampleRoutes.root.name),
+                  icon: const Icon(Icons.science_outlined),
+                  label: const Text('Open Sample Feature'),
                 ),
               ],
             ),

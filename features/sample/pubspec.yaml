@@ -1,0 +1,20 @@
+name: feature_sample
+description: Personal OS — Sample Feature (framework validation only; not a business feature)
+version: 0.1.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ">=3.11.0 <4.0.0"
+
+dependencies:
+  application: any
+  flutter:
+    sdk: flutter
+  platform_core: any
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+  platform_runtime: any

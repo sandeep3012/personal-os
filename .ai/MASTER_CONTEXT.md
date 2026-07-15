@@ -1,9 +1,9 @@
 # Master Context
 
 **Project:** Personal OS
-**Version:** v2.1
-**Repository Version:** v0.7.0-feature-framework
-**Status:** v0.7.0 Complete — Sprint 8 Planning (Finance MVP)
+**Version:** v2.2
+**Repository Version:** v0.7.5-framework-validated
+**Status:** v0.7.5 Complete — Sprint 8 Planning (Finance MVP)
 
 ---
 
@@ -105,13 +105,15 @@ Completed
 - Unit Tests
 - Application Layer Foundation (packages/application)
 - Feature Framework (FeatureModule, FeatureMetadata, FeatureRegistry)
+- Feature Framework Validation (features/sample — end-to-end reference impl)
 
 Repository Health
 
 - Builds successfully
-- Analyzer clean
-- Tests passing
-- Web build passing
+- Analyzer clean (all packages)
+- Tests passing (129 application + 27 feature_sample = 156 total)
+- AppBootstrap wires ApplicationModule + feature modules correctly
+- AppRouter accepts featureRoutes (ADR-003 §4 fulfilled)
 
 ADR Status
 
@@ -123,17 +125,24 @@ ADR Status
 
 # Current Milestone
 
-Feature Framework Complete
+Feature Framework Validated
 
 ---
 
 # Current Activity
 
-Sprint 8 Planning — Feature Framework is complete and stable.
+Sprint 8 Planning — Feature Framework validated end-to-end. Ready for Finance MVP.
 
 Target:
 
-Finance MVP — first feature package using the Feature Framework
+Finance MVP — first feature package using the validated Feature Framework
+
+Dependency rule clarification (from Sprint 7.5 validation):
+
+Feature packages declare `platform_core: any` as an explicit dependency (for
+`Result<T>`, `IDependencyRegistrar`). They declare `platform_runtime: any`
+in dev_dependencies only (for `ServiceRegistry` in module tests). The Package
+Dependency Matrix was correct; `Feature_Template.md` has been updated.
 
 ---
 
@@ -226,6 +235,7 @@ Current Platform SDK:
 - platform_runtime
 - platform_storage
 - application (v0.7.0 — Feature Framework: FeatureModule, FeatureMetadata, FeatureRegistry)
+- feature_sample (v0.1.0 — Framework validation only; not a business feature)
 
 Future Platform Packages:
 

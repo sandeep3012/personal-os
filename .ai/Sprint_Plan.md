@@ -1,9 +1,9 @@
 
 # Sprint Plan
 
-**Version:** v2.2  
-**Repository Version:** v0.7.0-feature-framework  
-**Current Milestone:** Feature Framework Complete
+**Version:** v2.3  
+**Repository Version:** v0.7.5-framework-validated  
+**Current Milestone:** Feature Framework Validated
 
 ---
 
@@ -45,7 +45,7 @@ Platform SDK, Clean Architecture, and isolated feature packages.
 
 Current Version:
 
-**v0.6.0-application-foundation**
+**v0.7.5-framework-validated**
 
 ---
 
@@ -124,16 +124,22 @@ Status: ✅ Complete
 
 Objective:
 
-Sprint 7 is complete. Feature Framework is stable and ready for the first
-feature package (Finance MVP per DOC-029). Sprint 8 implements the Finance
-feature using the Feature Framework.
+Sprint 7.5 is complete. Feature Framework is validated end-to-end. Sprint 8
+implements the Finance feature (Finance MVP per DOC-029).
 
-Feature Framework is ready when:
+Prerequisites met:
+- FeatureModule, FeatureMetadata, FeatureRegistry, FeatureException stable ✅
+- Feature_Template.md corrected (platform_core is an allowed dep) ✅
+- AppRouter refactored to accept featureRoutes (ADR-003 §4) ✅
+- ApplicationModule registered in AppBootstrap ✅
+- 27 feature_sample tests passing ✅ | 129 application tests passing ✅
+- Analyzer clean across all packages ✅
 
-- `FeatureModule`, `FeatureMetadata`, `FeatureRegistry`, `FeatureException` are stable ✅
-- `Feature_Template.md` documents the canonical structure ✅
-- Module registration order is documented and tested ✅
-- Analyzer clean, 129 tests passing ✅
+Pending before Sprint 8 begins:
+- ADR-004 (state management / UI framework) — required for Flutter widget bindings
+- NavigationService full implementation (GoRouterNavigationService wrapping GoRouter)
+- Resolve PermissionService provisional status
+- Resolve AppLifecycleService provisional status
 
 Status:
 
@@ -221,6 +227,44 @@ Status:
 Version:
 
 **v0.7.0-feature-framework**
+
+---
+
+## Sprint 7.5 — Feature Framework Validation
+
+Objective:
+
+Validate the Feature Framework built in Sprint 7 end-to-end using a complete
+reference implementation (`features/sample`). Not a business feature — framework
+validation only.
+
+Delivered:
+
+- `features/sample` — minimal but complete reference feature package
+  - `SampleModule` — extends `FeatureModule`; exercises all 4 hooks
+  - `SampleService` — application service; tracks startup completion
+  - `GetSampleStatusUseCase` — implements `NoParamsUseCase<String>`
+  - `SampleStartupStep` — implements `StartupStep`
+  - `SampleRoutes` — `RouteDefinition` constants
+  - `SamplePage` — Flutter `StatelessWidget`
+- 27 unit tests (all passing): service, use case, DI/module integration
+- `AppBootstrap` fixed: `ApplicationModule` was missing from bootstrap sequence
+- `AppRouter` refactored: accepts `featureRoutes` parameter (ADR-003 §4 fulfilled)
+- `apps/mobile` wired: `SampleModule` registered; home screen navigates to `SamplePage`
+- `Feature_Template.md` corrected: `platform_core` IS an allowed feature dep
+
+Framework findings:
+- Features need `platform_core: any` in pubspec (for `Result<T>`, `IDependencyRegistrar`)
+- Tests need `platform_runtime: any` in dev_dependencies (for `ServiceRegistry`)
+- The Package Dependency Matrix was always correct; `Feature_Template.md` had the error
+
+Status:
+
+✅ Complete — `FEATURE FRAMEWORK VALIDATED`
+
+Version:
+
+**v0.7.5-framework-validated**
 
 ---
 

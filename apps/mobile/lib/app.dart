@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:feature_sample/sample.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:personal_os/app/bootstrap/app_bootstrap.dart';
@@ -11,6 +12,17 @@ import 'package:personal_os/app/theme/app_theme.dart';
 /// Receives a fully booted [AppBootstrap] and constructs the router and
 /// Material 3 app. Listens to [AppLifecycleState.detached] to trigger a
 /// graceful runtime shutdown.
+///
+/// ## Feature route wiring
+///
+/// Feature packages register [RouteDefinition]s in [RouteRegistry] during
+/// boot. The app layer (here) maps each feature's route constants to a
+/// [GoRoute] with a concrete Flutter builder, then passes them to
+/// [AppRouter.create] via [featureRoutes].
+///
+/// This is the approved app-layer bridge pattern (ADR-003 §4). Feature
+/// packages never import go_router; they navigate via [NavigationService]
+/// (full implementation: Sprint 8).
 class PersonalOsApp extends StatefulWidget {
   const PersonalOsApp({super.key, required this.bootstrap});
 
@@ -28,8 +40,36 @@ class _PersonalOsAppState extends State<PersonalOsApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _router = AppRouter.create(config: widget.bootstrap.config);
+
+    // Build feature GoRoute list from each feature's route constants + pages.
+    // The DI registry resolves feature services needed by page constructors.
+    final featureRoutes = _buildFeatureRoutes();
+
+    _router = AppRouter.create(
+      config: widget.bootstrap.config,
+      featureRoutes: featureRoutes,
+    );
   }
+
+  /// Assembles the go_router [GoRoute] entries for all registered features.
+  ///
+  /// Each feature's public barrel exports:
+  ///   - Route constants (e.g. [SampleRoutes.root]) — path + name
+  ///   - Page widget (e.g. [SamplePage]) — Flutter builder
+  ///   - Services (e.g. [SampleService]) — resolved from DI
+  ///
+  /// This method is the app-layer composition point. Adding a new feature:
+  ///   1. Add a [GoRoute] entry here.
+  ///   2. The feature module is already registered in [AppBootstrap.boot].
+  List<RouteBase> _buildFeatureRoutes() => [
+        GoRoute(
+          path: SampleRoutes.root.path,
+          name: SampleRoutes.root.name,
+          builder: (context, state) => SamplePage(
+            service: widget.bootstrap.registry.get<SampleService>(),
+          ),
+        ),
+      ];
 
   @override
   void dispose() {
