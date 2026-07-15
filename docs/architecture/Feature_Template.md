@@ -32,9 +32,10 @@ platform_runtime
 platform_core
 ```
 
-A feature package imports **only** `application` (and `shared` if needed).
+A feature package may depend on `application`, `shared`, and `platform_core`.
 It **never** imports another feature package.
-It **never** imports `platform_runtime` or `platform_core` directly.
+It **never** imports `platform_runtime` in production code (only as a dev
+dependency for test helpers such as `ServiceRegistry`).
 
 ---
 
@@ -88,12 +89,17 @@ environment:
   sdk: ">=3.11.0 <4.0.0"
 
 dependencies:
-  application: any          # ← only required project dependency
+  application: any          # ← always required
+  flutter:
+    sdk: flutter
+  platform_core: any        # ← required for Result<T>, IDependencyRegistrar, etc.
   # shared: any             # add only if shared UI components are needed
 
 dev_dependencies:
-  lints: ^6.0.0
-  test: ^1.25.0
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+  platform_runtime: any     # ← test helper (ServiceRegistry) only
 ```
 
 Add `features/feature_[name]` to the workspace `pubspec.yaml` at the
@@ -361,8 +367,8 @@ Test repository implementations against an in-memory or file-backed store.
 
 Before merging a new feature package, verify:
 
-- [ ] `pubspec.yaml` lists only `application` (and optionally `shared`) as project dependencies
-- [ ] No import of `platform_runtime` or `platform_core` directly in feature source files
+- [ ] `pubspec.yaml` lists `application` and `platform_core` as dependencies; `shared` only if needed
+- [ ] `platform_runtime` appears only in `dev_dependencies` (never in production imports)
 - [ ] No import of another `feature_*` package
 - [ ] `FeatureModule` extends `FeatureModule` (not `RuntimeModule` directly)
 - [ ] Routes defined as `const RouteDefinition` in a dedicated routes file
@@ -390,7 +396,7 @@ Before merging a new feature package, verify:
 ## What a feature must NOT do
 
 - Import another feature package
-- Import `platform_runtime` or `platform_core` directly in non-bootstrap code
+- Import `platform_runtime` in production source files (tests may use `ServiceRegistry`)
 - Put business logic in the DI module
 - Export internal repository implementations or data models
 - Depend on `go_router` directly — use `NavigationService` from `application`

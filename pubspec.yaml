@@ -13,6 +13,7 @@ workspace:
   - packages/platform_core
   - packages/platform_runtime
   - packages/platform_storage
+  - features/sample
 
 dev_dependencies:
   melos: ^8.2.0
