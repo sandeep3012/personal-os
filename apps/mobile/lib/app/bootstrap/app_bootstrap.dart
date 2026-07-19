@@ -1,10 +1,20 @@
+import 'dart:io';
+
 import 'package:application/application.dart';
+import 'package:feature_finance/finance.dart';
 import 'package:feature_sample/sample.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:platform_core/config/app_config.dart';
 import 'package:platform_core/di/i_service_locator.dart';
 import 'package:platform_core/logging/i_logger.dart';
 import 'package:platform_runtime/bootstrap/runtime_bootstrap.dart';
 import 'package:personal_os/app/bootstrap/app_module.dart';
+import 'package:personal_os/app/bootstrap/finance_storage_module.dart';
+import 'package:personal_os/app/demo/demo_mode_controller.dart';
+import 'package:personal_os/app/demo/demo_module.dart';
+import 'package:personal_os/app/demo/switchable_finance_storage.dart';
+import 'package:personal_os/app/onboarding/onboarding_module.dart';
+import 'package:personal_os/app/onboarding/onboarding_status_store.dart';
 
 /// Orchestrates the Personal OS application startup and shutdown.
 ///
@@ -15,15 +25,42 @@ import 'package:personal_os/app/bootstrap/app_module.dart';
 /// ## Module registration order (required)
 ///
 /// ```
-/// AppModule            — ILogger, AppConfig
-/// ApplicationModule    — IEventBus, RouteRegistry, ApplicationRouter,
-///                        StartupPipeline, FeatureRegistry
-/// SampleModule         — SampleService, route /sample, SampleStartupStep
+/// AppModule              — ILogger, AppConfig
+/// ApplicationModule      — IEventBus, RouteRegistry, ApplicationRouter,
+///                          StartupPipeline, FeatureRegistry
+/// FinanceStorageModule   — IFinanceDatabaseExecutor, IFinanceTransactionRunner
+///                          (the external persistence binding FinanceModule
+///                          expects but does not self-register — see its
+///                          docs)
+/// FinanceModule          — persistence (DAOs, mappers, repositories),
+///                          domain services, specifications, use cases,
+///                          ViewModels, routes, Dashboard/Accounts/
+///                          Transactions/Categories pages
+/// SampleModule           — SampleService, route /sample, SampleStartupStep
 /// ```
 ///
 /// [ApplicationModule] **must** precede all [FeatureModule]s so that
 /// [FeatureRegistry], [RouteRegistry], and [StartupPipeline] exist in the
 /// DI container when feature modules call [FeatureModule.register].
+///
+/// [FinanceStorageModule] **must** precede [FinanceModule]: without it,
+/// resolving any Finance repository (transitively, any Finance ViewModel)
+/// throws `RegistryException: No registration found for type
+/// IFinanceDatabaseExecutor` — [FinanceModule]'s persistence bindings are
+/// lazy singletons that only fail at first resolution, not at `register()`
+/// time, so this omission previously went unnoticed until a Finance page
+/// was actually opened.
+///
+/// ## Finance storage file
+///
+/// [FinanceStorageModule] needs an already-opened
+/// [FileBackedFinanceDatabaseExecutor], and opening one means resolving a
+/// file path (via `path_provider` in production) and reading it if it
+/// exists — both async, so this cannot happen inside the synchronous
+/// [RuntimeModule.register] hook. [boot] performs that open itself, before
+/// constructing [RuntimeBootstrap], and accepts an optional
+/// [financeStorageFile] override so tests can point it at a temporary file
+/// instead of touching `path_provider`'s platform channel.
 ///
 /// ## Startup hierarchy
 ///
@@ -35,8 +72,10 @@ import 'package:personal_os/app/bootstrap/app_module.dart';
 /// SampleStartupStep             (feature — marks SampleService as loaded)
 /// ```
 final class AppBootstrap {
-  AppBootstrap._({required RuntimeBootstrap runtimeBootstrap})
-      : _runtime = runtimeBootstrap;
+  AppBootstrap._({
+    required RuntimeBootstrap runtimeBootstrap,
+    required this.needsOnboarding,
+  }) : _runtime = runtimeBootstrap;
 
   final RuntimeBootstrap _runtime;
 
@@ -52,15 +91,61 @@ final class AppBootstrap {
   /// Convenience accessor for [AppConfig] registered by [AppModule].
   AppConfig get config => _runtime.registry.get<AppConfig>();
 
+  /// Whether the first-run onboarding flow (Milestone 6 Part B) still needs
+  /// to be shown — `true` until the user completes it via Skip, Start
+  /// Fresh, or Demo Mode (see [OnboardingStatusStore]).
+  final bool needsOnboarding;
+
   /// Initialises the runtime and returns a fully booted [AppBootstrap].
+  ///
+  /// [financeStorageFile], when supplied, is used as the Finance
+  /// persistence file instead of resolving one via `path_provider` — tests
+  /// pass a temporary file here so they never touch `path_provider`'s
+  /// platform channel. [onboardingStatusFile] is the equivalent override for
+  /// [OnboardingStatusStore].
   ///
   /// Throws [RuntimeException] (from `platform_runtime`) if any module fails
   /// to register, initialise, or start.
-  static Future<AppBootstrap> boot() async {
+  static Future<AppBootstrap> boot({
+    File? financeStorageFile,
+    File? onboardingStatusFile,
+  }) async {
+    final financeExecutor = await FileBackedFinanceDatabaseExecutor.open(
+      financeStorageFile ?? await _defaultFinanceStorageFile(),
+    );
+    final realRunner = FileBackedFinanceTransactionRunner(financeExecutor);
+
+    // The switchable pair is what FinanceStorageModule actually binds —
+    // every Finance repository resolves these two instances for the app's
+    // lifetime. DemoModeController swaps their internal delegate between
+    // this real (file-backed) pair and a fresh in-memory demo pair; nothing
+    // downstream needs to know a swap ever happens (Milestone 6 Part A).
+    final switchableExecutor = SwitchableFinanceDatabaseExecutor(financeExecutor);
+    final switchableRunner = SwitchableFinanceTransactionRunner(realRunner);
+    final demoModeController = DemoModeController(
+      executor: switchableExecutor,
+      runner: switchableRunner,
+      realExecutor: financeExecutor,
+      realRunner: realRunner,
+      workspaceId: WorkspaceContext.defaultWorkspaceId,
+    );
+
+    final onboardingStore = OnboardingStatusStore(
+      onboardingStatusFile ?? await _defaultOnboardingStatusFile(),
+    );
+    final needsOnboarding = !await onboardingStore.hasCompletedOnboarding();
+
     final runtime = RuntimeBootstrap()
       ..addModule(const AppModule())
-      ..addModule(ApplicationModule())       // registers core application singletons
-      ..addModule(const SampleModule());     // validates Feature Framework
+      ..addModule(ApplicationModule())                          // registers core application singletons
+      ..addModule(FinanceStorageModule(                          // binds Finance's persistence
+        executor: switchableExecutor,
+        runner: switchableRunner,
+      ))
+      ..addModule(const FinanceModule())                        // installs the Finance feature
+      ..addModule(DemoModule(controller: demoModeController))    // Demo Mode management (Milestone 6)
+      ..addModule(OnboardingModule(store: onboardingStore))      // first-run status (Milestone 6)
+      ..addModule(const SampleModule());                        // validates Feature Framework
 
     await runtime.boot();
 
@@ -81,7 +166,7 @@ final class AppBootstrap {
       'Features loaded: ${registry.get<FeatureRegistry>().features.map((f) => f.id).join(', ')}',
     );
 
-    return AppBootstrap._(runtimeBootstrap: runtime);
+    return AppBootstrap._(runtimeBootstrap: runtime, needsOnboarding: needsOnboarding);
   }
 
   /// Shuts down the runtime gracefully.
@@ -92,5 +177,17 @@ final class AppBootstrap {
   Future<void> shutdown() async {
     _runtime.registry.get<ILogger>().info('Application Closed');
     await _runtime.shutdown();
+  }
+
+  /// The production Finance storage file: `<app documents dir>/finance_data.json`.
+  static Future<File> _defaultFinanceStorageFile() async {
+    final directory = await getApplicationDocumentsDirectory();
+    return File('${directory.path}/finance_data.json');
+  }
+
+  /// The production onboarding status file: `<app documents dir>/onboarding_status.json`.
+  static Future<File> _defaultOnboardingStatusFile() async {
+    final directory = await getApplicationDocumentsDirectory();
+    return File('${directory.path}/onboarding_status.json');
   }
 }

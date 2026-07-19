@@ -283,6 +283,38 @@ void main() {
     });
   });
 
+  // ── ApplicationModule — WorkspaceContext registration (ADR-004) ───────────
+
+  group('ApplicationModule + WorkspaceContext', () {
+    test('registers a WorkspaceContext singleton', () {
+      final registry = _makeRegistry();
+      expect(registry.isRegistered<WorkspaceContext>(), isTrue);
+    });
+
+    test('seeds WorkspaceContext with WorkspaceContext.defaultWorkspaceId', () {
+      final registry = _makeRegistry();
+      expect(
+        registry.get<WorkspaceContext>().workspaceId,
+        WorkspaceContext.defaultWorkspaceId,
+      );
+    });
+
+    test('the same WorkspaceContext instance is shared across resolutions',
+        () {
+      final registry = _makeRegistry();
+      final first = registry.get<WorkspaceContext>();
+      final second = registry.get<WorkspaceContext>();
+      expect(identical(first, second), isTrue);
+    });
+
+    test('feature modules can resolve WorkspaceContext registered before '
+        'them', () {
+      final registry = _makeRegistry();
+      const _MinimalModule().register(registry);
+      expect(registry.isRegistered<WorkspaceContext>(), isTrue);
+    });
+  });
+
   // ── FeatureModule ──────────────────────────────────────────────────────────
 
   group('FeatureModule — minimal (no routes, no steps)', () {

@@ -1,0 +1,143 @@
+import 'package:decimal/decimal.dart';
+import 'package:feature_finance/src/application/use_cases/summary/get_total_income_use_case.dart';
+import 'package:feature_finance/src/domain/entities/account.dart';
+import 'package:feature_finance/src/domain/entities/transaction.dart';
+import 'package:feature_finance/src/domain/value_objects/account_id.dart';
+import 'package:feature_finance/src/domain/value_objects/account_type.dart';
+import 'package:feature_finance/src/domain/value_objects/currency_code.dart';
+import 'package:feature_finance/src/domain/value_objects/finance_period.dart';
+import 'package:feature_finance/src/domain/value_objects/money.dart';
+import 'package:feature_finance/src/domain/value_objects/transaction_date.dart';
+import 'package:feature_finance/src/domain/value_objects/transaction_id.dart';
+import 'package:feature_finance/src/domain/value_objects/transaction_type.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import '../../../helpers/fake_account_repository.dart';
+import '../../../helpers/fake_transaction_repository.dart';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+final _inr = CurrencyCode('INR');
+const _ws = 'ws-1';
+
+Money _money(String amount) =>
+    Money(amount: Decimal.parse(amount), currency: _inr);
+
+Account _account(String id) {
+  final now = DateTime(2024, 1, 1);
+  return Account(
+    id: AccountId(id),
+    workspaceId: _ws,
+    name: 'Account $id',
+    type: AccountType.savings,
+    currency: _inr,
+    initialBalance: _money('0'),
+    isActive: true,
+    createdAt: now,
+    updatedAt: now,
+  );
+}
+
+Transaction _txn(
+  String id,
+  AccountId accountId,
+  TransactionType type,
+  String amount,
+  DateTime date,
+) {
+  return Transaction(
+    id: TransactionId(id),
+    workspaceId: _ws,
+    accountId: accountId,
+    type: type,
+    amount: _money(amount),
+    date: TransactionDate(date),
+    createdAt: date,
+    updatedAt: date,
+  );
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
+void main() {
+  late FakeAccountRepository accountRepo;
+  late FakeTransactionRepository txnRepo;
+  late GetTotalIncomeUseCase useCase;
+
+  setUp(() {
+    accountRepo = FakeAccountRepository();
+    txnRepo = FakeTransactionRepository();
+    useCase = GetTotalIncomeUseCase(
+      accountRepository: accountRepo,
+      transactionRepository: txnRepo,
+    );
+  });
+
+  group('GetTotalIncomeUseCase', () {
+    final period = FinancePeriod(year: 2024, month: 6);
+
+    test('returns zero when no transactions exist', () async {
+      accountRepo.seed([_account('acc-1')]);
+
+      final result = await useCase.execute(GetTotalIncomeInput(
+        workspaceId: _ws,
+        period: period,
+        currency: _inr,
+      ));
+
+      expect(result.isSuccess, isTrue);
+      expect(result.valueOrNull!.amount, Decimal.zero);
+    });
+
+    test('sums income transactions for the period', () async {
+      const accId = AccountId('acc-1');
+      accountRepo.seed([_account('acc-1')]);
+      txnRepo.seed([
+        _txn('t1', accId, TransactionType.income, '3000', DateTime(2024, 6, 1)),
+        _txn('t2', accId, TransactionType.income, '1500', DateTime(2024, 6, 15)),
+      ]);
+
+      final result = await useCase.execute(GetTotalIncomeInput(
+        workspaceId: _ws,
+        period: period,
+        currency: _inr,
+      ));
+
+      expect(result.valueOrNull!.amount, Decimal.parse('4500'));
+    });
+
+    test('ignores expense transactions', () async {
+      const accId = AccountId('acc-1');
+      accountRepo.seed([_account('acc-1')]);
+      txnRepo.seed([
+        _txn('t1', accId, TransactionType.expense, '500', DateTime(2024, 6, 5)),
+        _txn('t2', accId, TransactionType.income, '2000', DateTime(2024, 6, 10)),
+      ]);
+
+      final result = await useCase.execute(GetTotalIncomeInput(
+        workspaceId: _ws,
+        period: period,
+        currency: _inr,
+      ));
+
+      expect(result.valueOrNull!.amount, Decimal.parse('2000'));
+    });
+
+    test('ignores transactions outside the period', () async {
+      const accId = AccountId('acc-1');
+      accountRepo.seed([_account('acc-1')]);
+      txnRepo.seed([
+        _txn('in', accId, TransactionType.income, '1000', DateTime(2024, 6, 30)),
+        _txn('out', accId, TransactionType.income, '999', DateTime(2024, 5, 31)),
+      ]);
+
+      final result = await useCase.execute(GetTotalIncomeInput(
+        workspaceId: _ws,
+        period: period,
+        currency: _inr,
+      ));
+
+      expect(result.valueOrNull!.amount, Decimal.parse('1000'));
+    });
+  });
+}

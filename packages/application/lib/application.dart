@@ -116,3 +116,7 @@ export 'src/validation/composite_validator.dart';
 export 'src/validation/validation_failure.dart';
 export 'src/validation/validation_result.dart';
 export 'src/validation/validator.dart';
+
+// Workspace (ADR-004 — application-level infrastructure, never owned by a
+// feature package)
+export 'src/workspace/workspace_context.dart';

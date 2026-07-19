@@ -2,6 +2,7 @@ import 'package:application/src/features/feature_registry.dart';
 import 'package:application/src/navigation/application_router.dart';
 import 'package:application/src/routing/route_registry.dart';
 import 'package:application/src/startup/startup_pipeline.dart';
+import 'package:application/src/workspace/workspace_context.dart';
 import 'package:platform_core/di/i_dependency_registrar.dart';
 import 'package:platform_runtime/event_bus/event_bus.dart';
 import 'package:platform_runtime/event_bus/i_event_bus.dart';
@@ -23,6 +24,7 @@ import 'package:platform_runtime/modules/runtime_module.dart';
 /// | [ApplicationRouter] | Wraps [RouteRegistry] | Platform-independent resolver |
 /// | [StartupPipeline] | Empty pipeline | Feature modules add steps |
 /// | [FeatureRegistry] | Empty catalog | Feature modules register metadata |
+/// | [WorkspaceContext] | Seeded with [WorkspaceContext.defaultWorkspaceId] | ADR-004 — feature ViewModels read/subscribe, never invent their own workspace id |
 ///
 /// ## Example
 ///
@@ -47,12 +49,16 @@ final class ApplicationModule extends RuntimeModule {
     final router = ApplicationRouter(registry: routeRegistry);
     final pipeline = StartupPipeline();
     final featureRegistry = FeatureRegistry();
+    final workspaceContext = WorkspaceContext(
+      initialWorkspaceId: WorkspaceContext.defaultWorkspaceId,
+    );
 
     registrar.registerSingleton<IEventBus>(bus);
     registrar.registerSingleton<RouteRegistry>(routeRegistry);
     registrar.registerSingleton<ApplicationRouter>(router);
     registrar.registerSingleton<StartupPipeline>(pipeline);
     registrar.registerSingleton<FeatureRegistry>(featureRegistry);
+    registrar.registerSingleton<WorkspaceContext>(workspaceContext);
   }
 
   @override

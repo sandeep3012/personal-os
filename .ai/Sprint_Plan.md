@@ -1,9 +1,9 @@
 
 # Sprint Plan
 
-**Version:** v2.3  
-**Repository Version:** v0.7.5-framework-validated  
-**Current Milestone:** Feature Framework Validated
+**Version:** v2.4  
+**Repository Version:** v0.8.0-finance-designed  
+**Current Milestone:** Finance Domain Design Complete
 
 ---
 
@@ -28,7 +28,7 @@ Platform SDK, Clean Architecture, and isolated feature packages.
 - Flutter Monorepo
 - Melos Workspace
 - CI Foundation
-- Documentation (DOC-001–DOC-030) ✅
+- Documentation (DOC-001–DOC-031) ✅
 - ADR Governance ✅ (ADR-001 Accepted, ADR-002 Partially Accepted, ADR-003 Accepted)
 - Analyzer clean
 - Tests passing
@@ -120,30 +120,65 @@ Status: ✅ Complete
 
 # Current Activity
 
-## Sprint 8 Planning — First Feature Package
+## Sprint 8 — Finance Domain Discovery & Design
 
 Objective:
 
-Sprint 7.5 is complete. Feature Framework is validated end-to-end. Sprint 8
-implements the Finance feature (Finance MVP per DOC-029).
+Pure design sprint. No production code. Produced the Finance Domain Design
+document (DOC-031) covering all 14 deliverables.
+
+Delivered:
+
+- `docs/architecture/DOC-031_Finance_Domain_Design.md` — complete Finance domain design
+  - Domain overview and product scope
+  - Ubiquitous language (11 canonical terms)
+  - Capability classification: Core MVP vs Future vs Out of Scope
+  - 2 Aggregate Roots: Account, Transaction
+  - 10 Value Objects: Money, CurrencyCode, AccountId, TransactionId, CategoryId,
+    AccountType, TransactionType, Payee, TransactionDate, FinancePeriod
+  - 3 Domain Services: BalanceCalculationService, TransferService, CategorySummaryService
+  - 2 Repository Contracts: IAccountRepository, ITransactionRepository
+  - 14 Use Cases (Account: 6, Transaction: 8 incl. summary: 5)
+  - 7 Domain Events (Account lifecycle + Transaction lifecycle + TransferCreated)
+  - 8 Business Invariants
+  - Validation rules
+  - Feature boundary map (Finance vs Platform responsibilities)
+  - Storage strategy + offline-first approach
+  - 7 Risks with mitigations
+  - Implementation roadmap: Sprint 8A → 8B → 8C → 8D → 8E
+
+Key design decisions:
+- Transfers promoted to Core MVP (required for balance correctness)
+- Categories: Finance stores `categoryId` reference only; platform owns category storage
+- `saveTransferPair` on repository = atomic DB transaction (not two separate saves)
+- Amount precision: REAL storage in MVP; INTEGER migration is known technical debt
+- Account balance: computed via BalanceCalculationService; not stored as mutable field (MVP)
+
+Status:
+
+✅ Complete — DOC-031 written to repository
+
+---
+
+## Sprint 8A Planning — Finance Domain (Pure Dart)
 
 Prerequisites met:
-- FeatureModule, FeatureMetadata, FeatureRegistry, FeatureException stable ✅
-- Feature_Template.md corrected (platform_core is an allowed dep) ✅
-- AppRouter refactored to accept featureRoutes (ADR-003 §4) ✅
-- ApplicationModule registered in AppBootstrap ✅
-- 27 feature_sample tests passing ✅ | 129 application tests passing ✅
-- Analyzer clean across all packages ✅
+- DOC-031 Finance Domain Design ✅
+- FeatureModule, FeatureMetadata, FeatureRegistry stable ✅
+- Feature_Template.md corrected ✅
+- NoParamsUseCase<T>, AsyncUseCase<I,O> in packages/application ✅
+- Result<T>, IDependencyRegistrar in platform_core ✅
+- 156 tests passing, analyzer clean ✅
 
-Pending before Sprint 8 begins:
-- ADR-004 (state management / UI framework) — required for Flutter widget bindings
-- NavigationService full implementation (GoRouterNavigationService wrapping GoRouter)
+Pending before Sprint 8A begins:
+- ADR-004 (state management / UI framework) — required for Sprint 8D (presentation); NOT required for 8A, 8B, 8C (pure domain + storage + wiring)
+- NavigationService full implementation — required for Sprint 8D only
 - Resolve PermissionService provisional status
 - Resolve AppLifecycleService provisional status
 
 Status:
 
-🟡 Planning — Sprint 8 scope (Finance MVP) to be defined
+🟡 Ready for Sprint 8A — Finance Domain (Pure Dart, no storage, no UI)
 
 ---
 

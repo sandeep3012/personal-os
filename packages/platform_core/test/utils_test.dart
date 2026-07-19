@@ -2,11 +2,92 @@ import 'package:platform_core/extensions/date_time_extensions.dart';
 import 'package:platform_core/extensions/iterable_extensions.dart';
 import 'package:platform_core/extensions/string_extensions.dart';
 import 'package:platform_core/utils/date_helpers.dart';
+import 'package:platform_core/utils/date_range.dart';
 import 'package:platform_core/utils/id_generator.dart';
 import 'package:platform_core/utils/validation_helpers.dart';
 import 'package:test/test.dart';
 
 void main() {
+  // ── DateRange ────────────────────────────────────────────────────────────
+
+  group('DateRange', () {
+    final jan1 = DateTime(2024, 1, 1);
+    final jan15 = DateTime(2024, 1, 15);
+    final jan31 = DateTime(2024, 1, 31);
+
+    test('constructs with valid start and end', () {
+      final range = DateRange(start: jan1, end: jan31);
+      expect(range.start, jan1);
+      expect(range.end, jan31);
+    });
+
+    test('start equal to end is valid (single-day range)', () {
+      expect(() => DateRange(start: jan15, end: jan15), returnsNormally);
+    });
+
+    test('start after end throws assertion error', () {
+      expect(
+        () => DateRange(start: jan31, end: jan1),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+
+    group('contains', () {
+      late DateRange range;
+      setUp(() => range = DateRange(start: jan1, end: jan31));
+
+      test('returns true for date equal to start', () {
+        expect(range.contains(jan1), isTrue);
+      });
+
+      test('returns true for date equal to end', () {
+        expect(range.contains(jan31), isTrue);
+      });
+
+      test('returns true for date inside range', () {
+        expect(range.contains(jan15), isTrue);
+      });
+
+      test('returns false for date before start', () {
+        expect(range.contains(DateTime(2023, 12, 31)), isFalse);
+      });
+
+      test('returns false for date after end', () {
+        expect(range.contains(DateTime(2024, 2, 1)), isFalse);
+      });
+    });
+
+    test('duration returns correct difference', () {
+      final range = DateRange(start: jan1, end: jan31);
+      expect(range.duration.inDays, 30);
+    });
+
+    test('equality holds for same start and end', () {
+      final a = DateRange(start: jan1, end: jan31);
+      final b = DateRange(start: jan1, end: jan31);
+      expect(a, equals(b));
+      expect(a.hashCode, b.hashCode);
+    });
+
+    test('inequality when start differs', () {
+      final a = DateRange(start: jan1, end: jan31);
+      final b = DateRange(start: jan15, end: jan31);
+      expect(a, isNot(equals(b)));
+    });
+
+    test('inequality when end differs', () {
+      final a = DateRange(start: jan1, end: jan15);
+      final b = DateRange(start: jan1, end: jan31);
+      expect(a, isNot(equals(b)));
+    });
+
+    test('toString includes start and end', () {
+      final range = DateRange(start: jan1, end: jan31);
+      final s = range.toString();
+      expect(s.contains('DateRange'), isTrue);
+    });
+  });
+
   // ── UuidGenerator ────────────────────────────────────────────────────────
 
   group('UuidGenerator', () {

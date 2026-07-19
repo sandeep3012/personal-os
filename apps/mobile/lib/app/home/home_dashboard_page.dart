@@ -1,0 +1,559 @@
+import 'package:application/application.dart' show AsyncState;
+import 'package:design_system/design_system.dart';
+import 'package:feature_finance/finance.dart';
+import 'package:flutter/material.dart';
+
+/// The application's true landing screen (Milestone 5 Part B — TIS §1
+/// Milestone 2 "Home Dashboard"), replacing the Milestone 1A placeholder.
+///
+/// Built entirely from `package:design_system` components. Finance is the
+/// only module with real data today; every other module (Tasks, Habits,
+/// Goals, Calendar, Documents, Assets, AI) renders a static, visually
+/// polished placeholder [SummaryCard] — no fake repositories, ViewModels,
+/// or business logic are invented for them (Milestone 5 Part B scope).
+///
+/// The Finance summary renders through [ModuleCard], which isolates its own
+/// loading/error state from the rest of the page (TIS §5 "Loading / Error
+/// isolation") — a failed Finance load never blanks the placeholder
+/// sections below it.
+final class HomeDashboardPage extends StatefulWidget {
+  const HomeDashboardPage({
+    super.key,
+    required this.financeViewModel,
+    this.onOpenFinance,
+    this.onOpenAccounts,
+    this.onOpenTransactions,
+  });
+
+  final FinanceHomeViewModel financeViewModel;
+  final VoidCallback? onOpenFinance;
+  final VoidCallback? onOpenAccounts;
+  final VoidCallback? onOpenTransactions;
+
+  @override
+  State<HomeDashboardPage> createState() => _HomeDashboardPageState();
+}
+
+class _HomeDashboardPageState extends State<HomeDashboardPage> {
+  @override
+  void initState() {
+    super.initState();
+    widget.financeViewModel.load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final windowClass = AppBreakpoints.of(context);
+    final placeholderColumns = switch (windowClass) {
+      AppWindowSizeClass.compact => 1,
+      AppWindowSizeClass.medium => 2,
+      AppWindowSizeClass.expanded => 3,
+    };
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Home')),
+      body: ListenableBuilder(
+        listenable: widget.financeViewModel,
+        builder: (context, _) => RefreshIndicator(
+          onRefresh: widget.financeViewModel.refresh,
+          child: ListView(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            children: [
+              _entrance(0, const _WelcomeHeader()),
+              const SizedBox(height: AppSpacing.md),
+              _entrance(
+                1,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: _FinanceModuleCard(
+                    state: widget.financeViewModel.state,
+                    onTap: widget.onOpenFinance,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              _entrance(
+                2,
+                _RecentTransactionsSection(
+                  data: widget.financeViewModel.state.dataOrNull,
+                  onSeeAll: widget.onOpenTransactions,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              _entrance(
+                3,
+                _AccountOverviewSection(
+                  data: widget.financeViewModel.state.dataOrNull,
+                  onSeeAll: widget.onOpenAccounts,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              _entrance(
+                4,
+                _QuickActionsSection(
+                  onOpenFinance: widget.onOpenFinance,
+                  onOpenAccounts: widget.onOpenAccounts,
+                  onOpenTransactions: widget.onOpenTransactions,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              _entrance(
+                5,
+                const SectionHeader(title: 'More modules'),
+              ),
+              _entrance(
+                6,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: _PlaceholderModuleGrid(columns: placeholderColumns),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Wraps [child] in a subtle, once-only entrance animation, staggered by
+  /// [index] (VPS "subtle entrance animations on summary/module cards").
+  Widget _entrance(int index, Widget child) => _EntranceFade(index: index, child: child);
+}
+
+/// A once-only fade+slide-up entrance, staggered by [index] and respecting
+/// reduced-motion (AppMotion is the only source of durations/curves — TIS
+/// §11).
+final class _EntranceFade extends StatefulWidget {
+  const _EntranceFade({required this.index, required this.child});
+
+  final int index;
+  final Widget child;
+
+  @override
+  State<_EntranceFade> createState() => _EntranceFadeState();
+}
+
+class _EntranceFadeState extends State<_EntranceFade> {
+  var _visible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Reads the platform dispatcher directly rather than `MediaQuery.of`/
+    // `.maybeOf` — those establish an InheritedWidget dependency, which
+    // isn't allowed this early (`initState` runs before the element has
+    // finished mounting into the tree). `AppMotion.durationOrZero` in
+    // `build` below still re-checks reduced motion via `MediaQuery` on every
+    // rebuild, so this initState-only read only needs to decide whether to
+    // skip the staggered delay, not to be perfectly reactive to later
+    // changes.
+    final reduceMotion =
+        WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations;
+    if (reduceMotion) {
+      _visible = true;
+      return;
+    }
+    Future.delayed(Duration(milliseconds: 40 * widget.index), () {
+      if (mounted) setState(() => _visible = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final duration = AppMotion.durationOrZero(context, AppMotion.page);
+    return AnimatedOpacity(
+      opacity: _visible ? 1 : 0,
+      duration: duration,
+      curve: AppMotion.standardCurve,
+      child: AnimatedSlide(
+        offset: _visible ? Offset.zero : const Offset(0, 0.05),
+        duration: duration,
+        curve: AppMotion.standardCurve,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+class _WelcomeHeader extends StatelessWidget {
+  const _WelcomeHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final greeting = _greetingFor(DateTime.now().hour);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(greeting, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            "Here's your overview",
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _greetingFor(int hour) {
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+}
+
+class _FinanceModuleCard extends StatelessWidget {
+  const _FinanceModuleCard({required this.state, this.onTap});
+
+  final AsyncState<FinanceDashboardData> state;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semanticColors = theme.extension<AppSemanticColors>();
+    final accent = semanticColors?.moduleAccent('finance') ?? theme.colorScheme.primary;
+
+    return ModuleCard<FinanceDashboardData>(
+      icon: Icons.account_balance_wallet_outlined,
+      accentColor: accent,
+      title: 'Finance',
+      state: state,
+      loadingHeight: 120,
+      onTap: onTap,
+      semanticLabel: 'Finance summary',
+      contentBuilder: (context, data) => _FinanceCardBody(data: data),
+    );
+  }
+}
+
+class _FinanceCardBody extends StatelessWidget {
+  const _FinanceCardBody({required this.data});
+
+  final FinanceDashboardData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final entries = data.totalBalanceByCurrency.entries.toList();
+    final primaryBalance = entries.isEmpty ? null : entries.first;
+
+    // Expense-to-income ratio for this month, clamped for display — a
+    // simple presentation-layer derivation of two already-fetched totals,
+    // not a new business rule.
+    final incomeAmount = data.totalIncome.amount.toDouble();
+    final expenseAmount = data.totalExpenses.amount.toDouble();
+    final spendRatio = incomeAmount <= 0 ? 0.0 : (expenseAmount / incomeAmount).clamp(0.0, 1.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Balance', style: theme.textTheme.labelMedium),
+        const SizedBox(height: AppSpacing.xs),
+        if (primaryBalance != null)
+          MoneyText(
+            amount: primaryBalance.value.amount,
+            currencyCode: primaryBalance.key,
+            variant: MoneyTextVariant.display,
+          )
+        else
+          Text('No accounts yet', style: theme.textTheme.bodyMedium),
+        const SizedBox(height: AppSpacing.md),
+        Row(
+          children: [
+            Expanded(
+              child: _MiniStat(
+                icon: Icons.arrow_upward,
+                label: 'Income',
+                money: MoneyText(
+                  amount: data.totalIncome.amount,
+                  currencyCode: data.totalIncome.currency.value,
+                  semantic: MoneySemantic.positive,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: _MiniStat(
+                icon: Icons.arrow_downward,
+                label: 'Expenses',
+                money: MoneyText(
+                  amount: data.totalExpenses.amount,
+                  currencyCode: data.totalExpenses.currency.value,
+                  semantic: MoneySemantic.negative,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Text('Monthly spending', style: theme.textTheme.labelMedium),
+        const SizedBox(height: AppSpacing.xs),
+        ProportionBar(
+          value: spendRatio,
+          semanticLabel: 'Spent ${(spendRatio * 100).round()} percent of income this month',
+        ),
+      ],
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  const _MiniStat({
+    required this.icon,
+    required this.label,
+    required this.money,
+  });
+
+  final IconData icon;
+  final String label;
+  final Widget money;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: AppIconSizes.inline),
+            const SizedBox(width: AppSpacing.xs),
+            Text(label, style: theme.textTheme.labelMedium),
+          ],
+        ),
+        money,
+      ],
+    );
+  }
+}
+
+class _RecentTransactionsSection extends StatelessWidget {
+  const _RecentTransactionsSection({required this.data, this.onSeeAll});
+
+  final FinanceDashboardData? data;
+  final VoidCallback? onSeeAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final transactions = data?.recentTransactions ?? const [];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(title: 'Recent Transactions', onSeeAll: onSeeAll),
+        if (data == null)
+          const SizedBox.shrink()
+        else if (transactions.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: Text('No recent transactions'),
+          )
+        else
+          for (final txn in transactions.take(5))
+            TransactionTile(
+              // The tile type is derived inline (rather than via a typed
+              // helper taking a `Transaction` parameter) since that domain
+              // type isn't part of feature_finance's public barrel —
+              // AccountTile/TransactionTile themselves only ever take
+              // primitive values for the same reason.
+              type: txn.transferCounterpartId != null
+                  ? TransactionTileType.transfer
+                  : switch (txn.type.name) {
+                      'expense' => TransactionTileType.expense,
+                      'income' => TransactionTileType.income,
+                      _ => TransactionTileType.transfer,
+                    },
+              title: txn.payee?.value ?? txn.type.name,
+              subtitle: txn.note ?? txn.type.name,
+              amountText: MoneyText.format(txn.amount.amount, txn.amount.currency.value),
+            ),
+      ],
+    );
+  }
+}
+
+class _AccountOverviewSection extends StatelessWidget {
+  const _AccountOverviewSection({required this.data, this.onSeeAll});
+
+  final FinanceDashboardData? data;
+  final VoidCallback? onSeeAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final accounts = data?.accounts ?? const <AccountListItem>[];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(title: 'Accounts', onSeeAll: onSeeAll),
+        if (data == null)
+          const SizedBox.shrink()
+        else if (accounts.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: Text('Add an account to see it here'),
+          )
+        else
+          for (final item in accounts.take(3))
+            AccountTile(
+              icon: Icons.account_balance_wallet_outlined,
+              name: item.account.name,
+              subtitle: item.account.type.name,
+              balanceText: MoneyText.format(item.balance.amount, item.balance.currency.value),
+            ),
+      ],
+    );
+  }
+}
+
+class _QuickActionsSection extends StatelessWidget {
+  const _QuickActionsSection({
+    this.onOpenFinance,
+    this.onOpenAccounts,
+    this.onOpenTransactions,
+  });
+
+  final VoidCallback? onOpenFinance;
+  final VoidCallback? onOpenAccounts;
+  final VoidCallback? onOpenTransactions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeader(title: 'Quick Actions'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              if (onOpenFinance != null)
+                QuickActionButton(
+                  icon: Icons.account_balance_wallet_outlined,
+                  label: 'Open Finance',
+                  onTap: onOpenFinance!,
+                ),
+              if (onOpenAccounts != null)
+                QuickActionButton(
+                  icon: Icons.account_balance_outlined,
+                  label: 'View Accounts',
+                  onTap: onOpenAccounts!,
+                ),
+              if (onOpenTransactions != null)
+                QuickActionButton(
+                  icon: Icons.receipt_long_outlined,
+                  label: 'View Transactions',
+                  onTap: onOpenTransactions!,
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Static, visually-polished placeholders for every module without real
+/// data yet (Milestone 5 Part B — explicitly no fake repositories/
+/// ViewModels/business logic).
+class _PlaceholderModuleGrid extends StatelessWidget {
+  const _PlaceholderModuleGrid({required this.columns});
+
+  final int columns;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semanticColors = theme.extension<AppSemanticColors>();
+
+    Color accentFor(String moduleId) =>
+        semanticColors?.moduleAccent(moduleId) ?? theme.colorScheme.primary;
+
+    final cards = <Widget>[
+      SummaryCard(
+        icon: Icons.check_circle_outline,
+        accentColor: accentFor('tasks'),
+        title: 'Tasks',
+        body: const _ComingSoonBody(message: 'Task tracking is coming soon'),
+      ),
+      SummaryCard(
+        icon: Icons.repeat,
+        accentColor: accentFor('habits'),
+        title: 'Habits',
+        body: const _ComingSoonBody(message: 'Habit tracking is coming soon'),
+      ),
+      SummaryCard(
+        icon: Icons.flag_outlined,
+        accentColor: accentFor('goals'),
+        title: 'Goals',
+        body: Row(
+          children: [
+            const ProgressRing(progress: 0, label: '0%'),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                'No goals yet',
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
+          ],
+        ),
+      ),
+      SummaryCard(
+        icon: Icons.calendar_today_outlined,
+        accentColor: accentFor('calendar'),
+        title: 'Upcoming',
+        body: const _ComingSoonBody(message: 'No upcoming reminders or events'),
+      ),
+      SummaryCard(
+        icon: Icons.description_outlined,
+        accentColor: accentFor('documents'),
+        title: 'Documents',
+        body: const _ComingSoonBody(message: 'Document storage is coming soon'),
+      ),
+      SummaryCard(
+        icon: Icons.savings_outlined,
+        accentColor: accentFor('assets'),
+        title: 'Assets',
+        body: const _ComingSoonBody(message: 'Asset tracking is coming soon'),
+      ),
+      SummaryCard(
+        icon: Icons.auto_awesome_outlined,
+        accentColor: accentFor('ai'),
+        title: 'AI Assistant',
+        body: const _ComingSoonBody(message: 'Your AI assistant is coming soon'),
+      ),
+    ];
+
+    return GridView.count(
+      crossAxisCount: columns,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: AppSpacing.sm,
+      crossAxisSpacing: AppSpacing.sm,
+      childAspectRatio: columns == 1 ? 2.2 : 1.4,
+      children: cards,
+    );
+  }
+}
+
+class _ComingSoonBody extends StatelessWidget {
+  const _ComingSoonBody({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      message,
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+    );
+  }
+}

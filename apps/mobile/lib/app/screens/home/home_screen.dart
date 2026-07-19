@@ -5,9 +5,11 @@ import 'package:platform_core/config/app_config.dart';
 import 'package:personal_os/app/widgets/section_card.dart';
 import 'package:personal_os/app/widgets/status_item.dart';
 
-/// The application home screen — the shell's root route ("/").
+/// The platform diagnostics screen (shell route `/diagnostics`).
 ///
-/// Displays:
+/// Not the application's primary destination — Finance is (see
+/// [AppRouter]). This screen is a developer-facing view of platform
+/// internals:
 /// - Platform status (which SDK layers have initialised)
 /// - Application version and build environment
 /// - Feature navigation (links to registered features)
@@ -23,7 +25,7 @@ class HomeScreen extends StatelessWidget {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Personal OS'),
+        title: const Text('Diagnostics'),
         centerTitle: true,
         backgroundColor: theme.colorScheme.surface,
         surfaceTintColor: Colors.transparent,

@@ -10,13 +10,30 @@ environment:
 workspace:
   - apps/mobile
   - packages/application
+  - packages/design_system
   - packages/platform_core
   - packages/platform_runtime
   - packages/platform_storage
+  - features/finance
   - features/sample
 
 dev_dependencies:
   melos: ^8.2.0
+
+# path_provider_foundation >=2.6.0 depends on `objective_c` (a native-assets
+# package with a `hook/build.dart`, relevant only to iOS/macOS). This
+# Flutter SDK builds native assets for every resolved package regardless of
+# target platform (`flutter config --enable-native-assets`, on by default),
+# and on Windows that build-hook subprocess invocation breaks on paths
+# containing spaces ("'C:\Program' is not recognized..."), failing Android
+# builds even though objective_c/path_provider_foundation are never used on
+# Android (path_provider_android is). Pinned to the last version before
+# objective_c/native-assets were introduced — no native build hook, so
+# nothing is built for any platform. Remove once either upstream fixes the
+# Windows native-assets path-quoting bug or path_provider_foundation's
+# native asset step becomes platform-conditional.
+dependency_overrides:
+  path_provider_foundation: 2.5.1
 
 # Melos 8.x: all melos configuration lives under this key (melos.yaml is kept
 # as human-readable docs but is not read by melos 8.x).

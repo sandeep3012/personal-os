@@ -20,7 +20,7 @@ void main() {
   group('HomeScreen', () {
     testWidgets('displays app title in app bar', (WidgetTester tester) async {
       await tester.pumpWidget(_wrap(const HomeScreen(config: _devConfig)));
-      expect(find.text('Personal OS'), findsOneWidget);
+      expect(find.text('Diagnostics'), findsOneWidget);
     });
 
     testWidgets('shows Platform Status section', (WidgetTester tester) async {
@@ -63,10 +63,10 @@ void main() {
       expect(find.text('DEVELOPMENT'), findsOneWidget);
     });
 
-    testWidgets('shows three check icons for status items',
+    testWidgets('shows a check icon for every platform status item',
         (WidgetTester tester) async {
       await tester.pumpWidget(_wrap(const HomeScreen(config: _devConfig)));
-      expect(find.byIcon(Icons.check_circle_rounded), findsNWidgets(3));
+      expect(find.byIcon(Icons.check_circle_rounded), findsNWidgets(5));
     });
 
     testWidgets('displays staging environment correctly',

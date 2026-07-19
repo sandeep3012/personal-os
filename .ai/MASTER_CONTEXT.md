@@ -1,9 +1,9 @@
 # Master Context
 
 **Project:** Personal OS
-**Version:** v2.2
-**Repository Version:** v0.7.5-framework-validated
-**Status:** v0.7.5 Complete — Sprint 8 Planning (Finance MVP)
+**Version:** v2.3
+**Repository Version:** v0.8.0-finance-designed
+**Status:** Sprint 8 Finance Domain Design Complete — Sprint 8A Ready
 
 ---
 
@@ -87,7 +87,7 @@ Rules:
 
 Current Version
 
-v0.7.0-feature-framework
+v0.8.0-finance-designed
 
 Completed
 
@@ -106,6 +106,7 @@ Completed
 - Application Layer Foundation (packages/application)
 - Feature Framework (FeatureModule, FeatureMetadata, FeatureRegistry)
 - Feature Framework Validation (features/sample — end-to-end reference impl)
+- Finance Domain Design (DOC-031 — 14 deliverables, pure design sprint)
 
 Repository Health
 
@@ -114,6 +115,7 @@ Repository Health
 - Tests passing (129 application + 27 feature_sample = 156 total)
 - AppBootstrap wires ApplicationModule + feature modules correctly
 - AppRouter accepts featureRoutes (ADR-003 §4 fulfilled)
+- DOC-031 Finance Domain Design written to docs/architecture/
 
 ADR Status
 
@@ -131,11 +133,13 @@ Feature Framework Validated
 
 # Current Activity
 
-Sprint 8 Planning — Feature Framework validated end-to-end. Ready for Finance MVP.
+Sprint 8 complete — Finance Domain Design (DOC-031) written to repository.
+Sprint 8A ready: Finance domain in pure Dart (entities, value objects, use cases, repository contracts).
 
 Target:
 
-Finance MVP — first feature package using the validated Feature Framework
+Sprint 8A — Finance Domain Pure Dart implementation.
+Sprint 8D (presentation) blocked until ADR-004 approved.
 
 Dependency rule clarification (from Sprint 7.5 validation):
 
@@ -143,6 +147,15 @@ Feature packages declare `platform_core: any` as an explicit dependency (for
 `Result<T>`, `IDependencyRegistrar`). They declare `platform_runtime: any`
 in dev_dependencies only (for `ServiceRegistry` in module tests). The Package
 Dependency Matrix was correct; `Feature_Template.md` has been updated.
+
+Finance design decisions (from DOC-031):
+
+- 2 entities: Account (Aggregate Root), Transaction (Aggregate Root)
+- Transfers are Core MVP (required for balance correctness — not optional)
+- Categories: Finance stores opaque `categoryId` reference only
+- `saveTransferPair` on repository provides atomic DB transaction guarantee
+- Balance is computed (BalanceCalculationService), not stored as a mutable field
+- Amount stored as REAL in SQLite for MVP — INTEGER migration is known technical debt
 
 ---
 
