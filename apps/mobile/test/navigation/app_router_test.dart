@@ -1,10 +1,12 @@
 import 'package:feature_finance/finance.dart';
+import 'package:feature_habits/habits.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:personal_os/app/demo/demo_mode_controller.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
+import 'package:personal_os/app/demo/switchable_habit_storage.dart';
 import 'package:personal_os/app/demo/switchable_task_storage.dart';
 import 'package:platform_core/config/app_config.dart';
 import 'package:platform_core/environment/build_environment.dart';
@@ -13,13 +15,15 @@ import 'package:personal_os/app/screens/home/home_screen.dart';
 
 /// A minimal, real [DemoModeController] wired to throwaway in-memory
 /// executors — these tests only exercise shell/routing mechanics, never
-/// actual Finance/Tasks persistence, so fully-fledged file-backed pairs
-/// aren't needed.
+/// actual Finance/Tasks/Habits persistence, so fully-fledged file-backed
+/// pairs aren't needed.
 DemoModeController _dummyDemoModeController() {
   final realExecutor = InMemoryFinanceDatabaseExecutor();
   final realRunner = InMemoryFinanceTransactionRunner(realExecutor);
   final realTaskExecutor = InMemoryTaskDatabaseExecutor();
   final realTaskRunner = InMemoryTaskTransactionRunner(realTaskExecutor);
+  final realHabitExecutor = InMemoryHabitDatabaseExecutor();
+  final realHabitRunner = InMemoryHabitTransactionRunner(realHabitExecutor);
   return DemoModeController(
     financeExecutor: SwitchableFinanceDatabaseExecutor(realExecutor),
     financeRunner: SwitchableFinanceTransactionRunner(realRunner),
@@ -29,6 +33,10 @@ DemoModeController _dummyDemoModeController() {
     taskRunner: SwitchableTaskTransactionRunner(realTaskRunner),
     realTaskExecutor: realTaskExecutor,
     realTaskRunner: realTaskRunner,
+    habitExecutor: SwitchableHabitDatabaseExecutor(realHabitExecutor),
+    habitRunner: SwitchableHabitTransactionRunner(realHabitRunner),
+    realHabitExecutor: realHabitExecutor,
+    realHabitRunner: realHabitRunner,
     workspaceId: 'default-workspace',
   );
 }
@@ -43,6 +51,7 @@ const _financeText = 'Finance branch placeholder';
 const _homeText = 'Home branch placeholder';
 const _settingsText = 'Settings branch placeholder';
 const _tasksText = 'Tasks branch placeholder';
+const _habitsText = 'Habits branch placeholder';
 
 /// A minimal stand-in for Finance's real routes — a `StatefulShellBranch`
 /// requires at least one `GoRoute` descendant to derive a default location,
@@ -74,6 +83,11 @@ Widget _dummySettingsBuilder(BuildContext context, GoRouterState state) =>
 Widget _dummyTasksBuilder(BuildContext context, GoRouterState state) =>
     const Scaffold(body: Center(child: Text(_tasksText)));
 
+/// A minimal stand-in for the real Habits page builder — see
+/// [_dummyHomeBuilder].
+Widget _dummyHabitsBuilder(BuildContext context, GoRouterState state) =>
+    const Scaffold(body: Center(child: Text(_habitsText)));
+
 /// Pumps [routerConfig] at a Compact-width viewport (<600dp) so [AppShell]
 /// renders its bottom `NavigationBar` — the layout these navigation tests
 /// exercise (adaptive `NavigationRail` behavior at wider widths is a
@@ -96,6 +110,7 @@ void main() {
           homeBuilder: _dummyHomeBuilder,
           settingsBuilder: _dummySettingsBuilder,
           tasksBuilder: _dummyTasksBuilder,
+          habitsBuilder: _dummyHabitsBuilder,
           demoModeController: _dummyDemoModeController(),
           financeRoutes: _dummyFinanceRoutes(),
         ));
@@ -132,6 +147,7 @@ void main() {
         homeBuilder: _dummyHomeBuilder,
         settingsBuilder: _dummySettingsBuilder,
         tasksBuilder: _dummyTasksBuilder,
+        habitsBuilder: _dummyHabitsBuilder,
         demoModeController: _dummyDemoModeController(),
         financeRoutes: _dummyFinanceRoutes(),
         initialLocation: AppRouter.diagnosticsPath,
@@ -143,7 +159,7 @@ void main() {
 
     group('shell navigation (compact / bottom nav)', () {
       testWidgets(
-          'bottom nav shows Home, Finance, Tasks, and Settings destinations',
+          'bottom nav shows Home, Finance, Tasks, Habits, and Settings destinations',
           (tester) async {
         await _pumpCompact(tester, router);
 
@@ -161,6 +177,10 @@ void main() {
           findsOneWidget,
         );
         expect(
+          find.descendant(of: navBar, matching: find.text('Habits')),
+          findsOneWidget,
+        );
+        expect(
           find.descendant(of: navBar, matching: find.text('Settings')),
           findsOneWidget,
         );
@@ -174,6 +194,16 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text(_tasksText), findsOneWidget);
+      });
+
+      testWidgets('tapping Habits destination shows the Habits branch',
+          (tester) async {
+        await _pumpCompact(tester, router);
+
+        await tester.tap(find.text('Habits'));
+        await tester.pumpAndSettle();
+
+        expect(find.text(_habitsText), findsOneWidget);
       });
 
       testWidgets('tapping Finance destination shows the Finance branch',

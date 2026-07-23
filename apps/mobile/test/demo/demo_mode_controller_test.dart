@@ -1,8 +1,10 @@
 import 'package:feature_finance/finance.dart';
+import 'package:feature_habits/habits.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_os/app/demo/demo_mode_controller.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
+import 'package:personal_os/app/demo/switchable_habit_storage.dart';
 import 'package:personal_os/app/demo/switchable_task_storage.dart';
 
 const _ws = 'ws-demo-test';
@@ -28,11 +30,15 @@ final class _Harness {
       : realExecutor = InMemoryFinanceDatabaseExecutor(),
         realRunner = InMemoryFinanceTransactionRunner(InMemoryFinanceDatabaseExecutor()),
         realTaskExecutor = InMemoryTaskDatabaseExecutor(),
-        realTaskRunner = InMemoryTaskTransactionRunner(InMemoryTaskDatabaseExecutor()) {
+        realTaskRunner = InMemoryTaskTransactionRunner(InMemoryTaskDatabaseExecutor()),
+        realHabitExecutor = InMemoryHabitDatabaseExecutor(),
+        realHabitRunner = InMemoryHabitTransactionRunner(InMemoryHabitDatabaseExecutor()) {
     executor = SwitchableFinanceDatabaseExecutor(realExecutor);
     runner = SwitchableFinanceTransactionRunner(realRunner);
     taskExecutor = SwitchableTaskDatabaseExecutor(realTaskExecutor);
     taskRunner = SwitchableTaskTransactionRunner(realTaskRunner);
+    habitExecutor = SwitchableHabitDatabaseExecutor(realHabitExecutor);
+    habitRunner = SwitchableHabitTransactionRunner(realHabitRunner);
     controller = DemoModeController(
       financeExecutor: executor,
       financeRunner: runner,
@@ -42,6 +48,10 @@ final class _Harness {
       taskRunner: taskRunner,
       realTaskExecutor: realTaskExecutor,
       realTaskRunner: realTaskRunner,
+      habitExecutor: habitExecutor,
+      habitRunner: habitRunner,
+      realHabitExecutor: realHabitExecutor,
+      realHabitRunner: realHabitRunner,
       workspaceId: _ws,
     );
   }
@@ -50,10 +60,14 @@ final class _Harness {
   final InMemoryFinanceTransactionRunner realRunner;
   final InMemoryTaskDatabaseExecutor realTaskExecutor;
   final InMemoryTaskTransactionRunner realTaskRunner;
+  final InMemoryHabitDatabaseExecutor realHabitExecutor;
+  final InMemoryHabitTransactionRunner realHabitRunner;
   late final SwitchableFinanceDatabaseExecutor executor;
   late final SwitchableFinanceTransactionRunner runner;
   late final SwitchableTaskDatabaseExecutor taskExecutor;
   late final SwitchableTaskTransactionRunner taskRunner;
+  late final SwitchableHabitDatabaseExecutor habitExecutor;
+  late final SwitchableHabitTransactionRunner habitRunner;
   late final DemoModeController controller;
 }
 

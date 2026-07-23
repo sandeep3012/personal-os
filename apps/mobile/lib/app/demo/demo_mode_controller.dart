@@ -1,34 +1,37 @@
 import 'package:feature_finance/finance.dart';
+import 'package:feature_habits/habits.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:flutter/foundation.dart';
 import 'package:personal_os/app/demo/demo_finance_seed_data.dart';
+import 'package:personal_os/app/demo/demo_habit_seed_data.dart';
 import 'package:personal_os/app/demo/demo_task_seed_data.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
+import 'package:personal_os/app/demo/switchable_habit_storage.dart';
 import 'package:personal_os/app/demo/switchable_task_storage.dart';
 
 /// Owns whether the app is currently showing sample data instead of the
 /// user's real data, and performs the swap — across every module that
 /// participates in Demo Mode (Milestone 6 Part A; extended for Tasks in
-/// Milestone 7).
+/// Milestone 7; extended for Habits thereafter).
 ///
 /// This is the one place that knows about "demo vs. real" — every
-/// repository, use case, and ViewModel in Finance and Tasks alike resolves
-/// its own feature's switchable executor/runner pair (registered once, never
-/// replaced) and stays completely unaware that a swap ever happens.
-/// Presentation code never branches on `isDemoMode` except to decide what to
-/// *show* (the [DemoModeBanner], the Settings section) — it never touches
-/// persistence directly.
+/// repository, use case, and ViewModel in Finance, Tasks, and Habits alike
+/// resolves its own feature's switchable executor/runner pair (registered
+/// once, never replaced) and stays completely unaware that a swap ever
+/// happens. Presentation code never branches on `isDemoMode` except to
+/// decide what to *show* (the [DemoModeBanner], the Settings section) — it
+/// never touches persistence directly.
 ///
 /// Adding a further module to Demo Mode means adding one more switchable
-/// pair + seed-data call here, mirroring the Finance/Tasks pattern exactly —
-/// no new controller class, no per-module demo infrastructure.
+/// pair + seed-data call here, mirroring the Finance/Tasks/Habits pattern
+/// exactly — no new controller class, no per-module demo infrastructure.
 ///
 /// [generation] increments on every enable/exit/reset; the app root uses it
 /// as a [ValueKey] to force a full remount of the shell (every already-open
-/// page's ViewModel is a DI factory — see `FinanceModule`/`TasksModule` — so
-/// a remount is sufficient to make every page reload against the newly
-/// active data source, without each page needing to listen for a demo-mode
-/// change itself).
+/// page's ViewModel is a DI factory — see `FinanceModule`/`TasksModule`/
+/// `HabitsModule` — so a remount is sufficient to make every page reload
+/// against the newly active data source, without each page needing to
+/// listen for a demo-mode change itself).
 final class DemoModeController extends ChangeNotifier {
   DemoModeController({
     required SwitchableFinanceDatabaseExecutor financeExecutor,
@@ -39,6 +42,10 @@ final class DemoModeController extends ChangeNotifier {
     required SwitchableTaskTransactionRunner taskRunner,
     required ITaskDatabaseExecutor realTaskExecutor,
     required ITaskTransactionRunner realTaskRunner,
+    required SwitchableHabitDatabaseExecutor habitExecutor,
+    required SwitchableHabitTransactionRunner habitRunner,
+    required IHabitDatabaseExecutor realHabitExecutor,
+    required IHabitTransactionRunner realHabitRunner,
     required this.workspaceId,
   })  : _financeExecutor = financeExecutor,
         _financeRunner = financeRunner,
@@ -47,7 +54,11 @@ final class DemoModeController extends ChangeNotifier {
         _taskExecutor = taskExecutor,
         _taskRunner = taskRunner,
         _realTaskExecutor = realTaskExecutor,
-        _realTaskRunner = realTaskRunner;
+        _realTaskRunner = realTaskRunner,
+        _habitExecutor = habitExecutor,
+        _habitRunner = habitRunner,
+        _realHabitExecutor = realHabitExecutor,
+        _realHabitRunner = realHabitRunner;
 
   final SwitchableFinanceDatabaseExecutor _financeExecutor;
   final SwitchableFinanceTransactionRunner _financeRunner;
@@ -58,6 +69,11 @@ final class DemoModeController extends ChangeNotifier {
   final SwitchableTaskTransactionRunner _taskRunner;
   final ITaskDatabaseExecutor _realTaskExecutor;
   final ITaskTransactionRunner _realTaskRunner;
+
+  final SwitchableHabitDatabaseExecutor _habitExecutor;
+  final SwitchableHabitTransactionRunner _habitRunner;
+  final IHabitDatabaseExecutor _realHabitExecutor;
+  final IHabitTransactionRunner _realHabitRunner;
 
   final String workspaceId;
 
@@ -70,10 +86,10 @@ final class DemoModeController extends ChangeNotifier {
   /// off this to force a full remount.
   int get generation => _generation;
 
-  /// Switches every participating module (Finance, Tasks) to a freshly
-  /// seeded in-memory demo dataset. The user's real (file-backed) data is
-  /// left completely untouched — demo writes only ever land in the fresh
-  /// in-memory stores created here.
+  /// Switches every participating module (Finance, Tasks, Habits) to a
+  /// freshly seeded in-memory demo dataset. The user's real (file-backed)
+  /// data is left completely untouched — demo writes only ever land in the
+  /// fresh in-memory stores created here.
   Future<void> enableDemoMode() async {
     final demoFinanceExecutor = InMemoryFinanceDatabaseExecutor();
     await DemoFinanceSeedData.seed(demoFinanceExecutor, workspaceId: workspaceId);
@@ -84,6 +100,11 @@ final class DemoModeController extends ChangeNotifier {
     await DemoTaskSeedData.seed(demoTaskExecutor, workspaceId: workspaceId);
     _taskExecutor.switchTo(demoTaskExecutor);
     _taskRunner.switchTo(InMemoryTaskTransactionRunner(demoTaskExecutor));
+
+    final demoHabitExecutor = InMemoryHabitDatabaseExecutor();
+    await DemoHabitSeedData.seed(demoHabitExecutor, workspaceId: workspaceId);
+    _habitExecutor.switchTo(demoHabitExecutor);
+    _habitRunner.switchTo(InMemoryHabitTransactionRunner(demoHabitExecutor));
 
     _isDemoMode = true;
     _generation++;
@@ -98,6 +119,8 @@ final class DemoModeController extends ChangeNotifier {
     _financeRunner.switchTo(_realFinanceRunner);
     _taskExecutor.switchTo(_realTaskExecutor);
     _taskRunner.switchTo(_realTaskRunner);
+    _habitExecutor.switchTo(_realHabitExecutor);
+    _habitRunner.switchTo(_realHabitRunner);
 
     _isDemoMode = false;
     _generation++;

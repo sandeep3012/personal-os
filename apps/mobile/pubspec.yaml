@@ -11,6 +11,7 @@ dependencies:
   application: any
   design_system: any
   feature_finance: any
+  feature_habits: any
   feature_sample: any
   feature_tasks: any
   flutter:

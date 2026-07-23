@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:feature_finance/finance.dart';
+import 'package:feature_habits/habits.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_core/config/app_config.dart';
 import 'package:platform_core/environment/build_environment.dart';
@@ -23,6 +24,11 @@ File _tempTasksFile() => File(
       '/tasks_data.json',
     );
 
+File _tempHabitsFile() => File(
+      '${Directory.systemTemp.createTempSync('habits_bootstrap_test_').path}'
+      '/habits_data.json',
+    );
+
 File _tempOnboardingFile() => File(
       '${Directory.systemTemp.createTempSync('onboarding_bootstrap_test_').path}'
       '/onboarding_status.json',
@@ -31,11 +37,13 @@ File _tempOnboardingFile() => File(
 Future<AppBootstrap> _boot({
   File? financeStorageFile,
   File? tasksStorageFile,
+  File? habitsStorageFile,
   File? onboardingStatusFile,
 }) =>
     AppBootstrap.boot(
       financeStorageFile: financeStorageFile ?? _tempFinanceFile(),
       tasksStorageFile: tasksStorageFile ?? _tempTasksFile(),
+      habitsStorageFile: habitsStorageFile ?? _tempHabitsFile(),
       onboardingStatusFile: onboardingStatusFile ?? _tempOnboardingFile(),
     );
 
@@ -143,6 +151,49 @@ void main() {
           'file-backed persistence layer', () async {
         final bootstrap = await _boot();
         final viewModel = bootstrap.registry.get<AccountsViewModel>();
+
+        await expectLater(viewModel.load(), completes);
+        expect(viewModel.state.isError, isFalse);
+
+        await bootstrap.shutdown();
+      });
+    });
+
+    group('Habits persistence binding', () {
+      test('IHabitDatabaseExecutor is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<IHabitDatabaseExecutor>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('IHabitTransactionRunner is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<IHabitTransactionRunner>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('every Habits ViewModel resolves without throwing', () async {
+        final bootstrap = await _boot();
+        expect(
+          () {
+            bootstrap.registry.get<HabitsHomeViewModel>();
+            bootstrap.registry.get<HabitsViewModel>();
+          },
+          returnsNormally,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('GetHabitsUseCase resolves and executes against the '
+          'file-backed persistence layer', () async {
+        final bootstrap = await _boot();
+        final viewModel = bootstrap.registry.get<HabitsViewModel>();
 
         await expectLater(viewModel.load(), completes);
         expect(viewModel.state.isError, isFalse);

@@ -1,39 +1,45 @@
 import 'package:application/application.dart' show AsyncState;
 import 'package:design_system/design_system.dart';
 import 'package:feature_finance/finance.dart';
+import 'package:feature_habits/habits.dart' show HabitsDashboardSummary, HabitsHomeViewModel;
 import 'package:feature_tasks/tasks.dart' show TasksDashboardSummary, TasksHomeViewModel;
 import 'package:flutter/material.dart';
 
 /// The application's true landing screen (Milestone 5 Part B — TIS §1
-/// Milestone 2 "Home Dashboard"; extended with Tasks in Milestone 7).
+/// Milestone 2 "Home Dashboard"; extended with Tasks in Milestone 7;
+/// extended with Habits thereafter).
 ///
-/// Built entirely from `package:design_system` components. Finance and Tasks
-/// are the only modules with real data today; every other module (Habits,
-/// Goals, Calendar, Documents, Assets, AI) renders a static, visually
+/// Built entirely from `package:design_system` components. Finance, Tasks,
+/// and Habits are the only modules with real data today; every other module
+/// (Goals, Calendar, Documents, Assets, AI) renders a static, visually
 /// polished placeholder [SummaryCard] — no fake repositories, ViewModels,
 /// or business logic are invented for them (Milestone 5 Part B scope).
 ///
 /// Each module summary renders through [ModuleCard], which isolates its own
 /// loading/error state from the rest of the page (TIS §5 "Loading / Error
-/// isolation") — a failed Finance or Tasks load never blanks the other
-/// module's card or the placeholder sections below.
+/// isolation") — a failed Finance, Tasks, or Habits load never blanks the
+/// other modules' cards or the placeholder sections below.
 final class HomeDashboardPage extends StatefulWidget {
   const HomeDashboardPage({
     super.key,
     required this.financeViewModel,
     required this.tasksViewModel,
+    required this.habitsViewModel,
     this.onOpenFinance,
     this.onOpenAccounts,
     this.onOpenTransactions,
     this.onOpenTasks,
+    this.onOpenHabits,
   });
 
   final FinanceHomeViewModel financeViewModel;
   final TasksHomeViewModel tasksViewModel;
+  final HabitsHomeViewModel habitsViewModel;
   final VoidCallback? onOpenFinance;
   final VoidCallback? onOpenAccounts;
   final VoidCallback? onOpenTransactions;
   final VoidCallback? onOpenTasks;
+  final VoidCallback? onOpenHabits;
 
   @override
   State<HomeDashboardPage> createState() => _HomeDashboardPageState();
@@ -45,6 +51,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
     super.initState();
     widget.financeViewModel.load();
     widget.tasksViewModel.load();
+    widget.habitsViewModel.load();
   }
 
   @override
@@ -59,11 +66,14 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('Home')),
       body: ListenableBuilder(
-        listenable: Listenable.merge([widget.financeViewModel, widget.tasksViewModel]),
+        listenable: Listenable.merge(
+          [widget.financeViewModel, widget.tasksViewModel, widget.habitsViewModel],
+        ),
         builder: (context, _) => RefreshIndicator(
           onRefresh: () => Future.wait([
             widget.financeViewModel.refresh(),
             widget.tasksViewModel.refresh(),
+            widget.habitsViewModel.refresh(),
           ]),
           child: ListView(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
@@ -91,6 +101,17 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
                   ),
                 ),
               ),
+              const SizedBox(height: AppSpacing.md),
+              _entrance(
+                2,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: _HabitsModuleCard(
+                    state: widget.habitsViewModel.state,
+                    onTap: widget.onOpenHabits,
+                  ),
+                ),
+              ),
               const SizedBox(height: AppSpacing.lg),
               _entrance(
                 3,
@@ -115,6 +136,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
                   onOpenAccounts: widget.onOpenAccounts,
                   onOpenTransactions: widget.onOpenTransactions,
                   onOpenTasks: widget.onOpenTasks,
+                  onOpenHabits: widget.onOpenHabits,
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -377,6 +399,60 @@ class _TasksCardBody extends StatelessWidget {
   }
 }
 
+class _HabitsModuleCard extends StatelessWidget {
+  const _HabitsModuleCard({required this.state, this.onTap});
+
+  final AsyncState<HabitsDashboardSummary> state;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semanticColors = theme.extension<AppSemanticColors>();
+    final accent = semanticColors?.moduleAccent('habits') ?? theme.colorScheme.primary;
+
+    return ModuleCard<HabitsDashboardSummary>(
+      icon: Icons.local_fire_department_outlined,
+      accentColor: accent,
+      title: 'Habits',
+      state: state,
+      loadingHeight: 96,
+      onTap: onTap,
+      semanticLabel: 'Habits summary',
+      contentBuilder: (context, data) => _HabitsCardBody(data: data),
+    );
+  }
+}
+
+class _HabitsCardBody extends StatelessWidget {
+  const _HabitsCardBody({required this.data});
+
+  final HabitsDashboardSummary data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: StatCard(
+            icon: Icons.repeat,
+            label: 'Active',
+            value: data.activeCount.toDouble(),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: StatCard(
+            icon: Icons.local_fire_department_outlined,
+            label: 'Completed today',
+            value: data.completedTodayCount.toDouble(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _MiniStat extends StatelessWidget {
   const _MiniStat({
     required this.icon,
@@ -490,12 +566,14 @@ class _QuickActionsSection extends StatelessWidget {
     this.onOpenAccounts,
     this.onOpenTransactions,
     this.onOpenTasks,
+    this.onOpenHabits,
   });
 
   final VoidCallback? onOpenFinance;
   final VoidCallback? onOpenAccounts;
   final VoidCallback? onOpenTransactions;
   final VoidCallback? onOpenTasks;
+  final VoidCallback? onOpenHabits;
 
   @override
   Widget build(BuildContext context) {
@@ -533,6 +611,12 @@ class _QuickActionsSection extends StatelessWidget {
                   label: 'Add Task',
                   onTap: onOpenTasks!,
                 ),
+              if (onOpenHabits != null)
+                QuickActionButton(
+                  icon: Icons.local_fire_department_outlined,
+                  label: 'Log Habit',
+                  onTap: onOpenHabits!,
+                ),
             ],
           ),
         ),
@@ -558,12 +642,6 @@ class _PlaceholderModuleGrid extends StatelessWidget {
         semanticColors?.moduleAccent(moduleId) ?? theme.colorScheme.primary;
 
     final cards = <Widget>[
-      SummaryCard(
-        icon: Icons.repeat,
-        accentColor: accentFor('habits'),
-        title: 'Habits',
-        body: const _ComingSoonBody(message: 'Habit tracking is coming soon'),
-      ),
       SummaryCard(
         icon: Icons.flag_outlined,
         accentColor: accentFor('goals'),

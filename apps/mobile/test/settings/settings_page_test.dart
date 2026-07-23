@@ -1,9 +1,11 @@
 import 'package:feature_finance/finance.dart';
+import 'package:feature_habits/habits.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_os/app/demo/demo_mode_controller.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
+import 'package:personal_os/app/demo/switchable_habit_storage.dart';
 import 'package:personal_os/app/demo/switchable_task_storage.dart';
 import 'package:personal_os/app/settings/settings_page.dart';
 
@@ -14,6 +16,8 @@ DemoModeController _controller() {
   final realRunner = InMemoryFinanceTransactionRunner(realExecutor);
   final realTaskExecutor = InMemoryTaskDatabaseExecutor();
   final realTaskRunner = InMemoryTaskTransactionRunner(realTaskExecutor);
+  final realHabitExecutor = InMemoryHabitDatabaseExecutor();
+  final realHabitRunner = InMemoryHabitTransactionRunner(realHabitExecutor);
   return DemoModeController(
     financeExecutor: SwitchableFinanceDatabaseExecutor(realExecutor),
     financeRunner: SwitchableFinanceTransactionRunner(realRunner),
@@ -23,6 +27,10 @@ DemoModeController _controller() {
     taskRunner: SwitchableTaskTransactionRunner(realTaskRunner),
     realTaskExecutor: realTaskExecutor,
     realTaskRunner: realTaskRunner,
+    habitExecutor: SwitchableHabitDatabaseExecutor(realHabitExecutor),
+    habitRunner: SwitchableHabitTransactionRunner(realHabitRunner),
+    realHabitExecutor: realHabitExecutor,
+    realHabitRunner: realHabitRunner,
     workspaceId: _ws,
   );
 }

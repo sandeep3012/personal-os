@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:application/application.dart';
 import 'package:feature_finance/finance.dart';
+import 'package:feature_habits/habits.dart';
 import 'package:feature_sample/sample.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:path_provider/path_provider.dart';
@@ -11,10 +12,12 @@ import 'package:platform_core/logging/i_logger.dart';
 import 'package:platform_runtime/bootstrap/runtime_bootstrap.dart';
 import 'package:personal_os/app/bootstrap/app_module.dart';
 import 'package:personal_os/app/bootstrap/finance_storage_module.dart';
+import 'package:personal_os/app/bootstrap/habits_storage_module.dart';
 import 'package:personal_os/app/bootstrap/tasks_storage_module.dart';
 import 'package:personal_os/app/demo/demo_mode_controller.dart';
 import 'package:personal_os/app/demo/demo_module.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
+import 'package:personal_os/app/demo/switchable_habit_storage.dart';
 import 'package:personal_os/app/demo/switchable_task_storage.dart';
 import 'package:personal_os/app/onboarding/onboarding_module.dart';
 import 'package:personal_os/app/onboarding/onboarding_status_store.dart';
@@ -116,6 +119,7 @@ final class AppBootstrap {
   static Future<AppBootstrap> boot({
     File? financeStorageFile,
     File? tasksStorageFile,
+    File? habitsStorageFile,
     File? onboardingStatusFile,
   }) async {
     final financeExecutor = await FileBackedFinanceDatabaseExecutor.open(
@@ -128,16 +132,24 @@ final class AppBootstrap {
     );
     final realTaskRunner = FileBackedTaskTransactionRunner(taskExecutor);
 
-    // The switchable pairs are what FinanceStorageModule/TasksStorageModule
-    // actually bind — every Finance/Tasks repository resolves these
-    // instances for the app's lifetime. DemoModeController swaps each pair's
-    // internal delegate between its real (file-backed) executor and a fresh
-    // in-memory demo one; nothing downstream needs to know a swap ever
-    // happens (Milestone 6 Part A; extended to Tasks in Milestone 7).
+    final habitExecutor = await FileBackedHabitDatabaseExecutor.open(
+      habitsStorageFile ?? await _defaultHabitsStorageFile(),
+    );
+    final realHabitRunner = FileBackedHabitTransactionRunner(habitExecutor);
+
+    // The switchable pairs are what FinanceStorageModule/TasksStorageModule/
+    // HabitsStorageModule actually bind — every Finance/Tasks/Habits
+    // repository resolves these instances for the app's lifetime.
+    // DemoModeController swaps each pair's internal delegate between its
+    // real (file-backed) executor and a fresh in-memory demo one; nothing
+    // downstream needs to know a swap ever happens (Milestone 6 Part A;
+    // extended to Tasks in Milestone 7; extended to Habits thereafter).
     final switchableFinanceExecutor = SwitchableFinanceDatabaseExecutor(financeExecutor);
     final switchableFinanceRunner = SwitchableFinanceTransactionRunner(realFinanceRunner);
     final switchableTaskExecutor = SwitchableTaskDatabaseExecutor(taskExecutor);
     final switchableTaskRunner = SwitchableTaskTransactionRunner(realTaskRunner);
+    final switchableHabitExecutor = SwitchableHabitDatabaseExecutor(habitExecutor);
+    final switchableHabitRunner = SwitchableHabitTransactionRunner(realHabitRunner);
     final demoModeController = DemoModeController(
       financeExecutor: switchableFinanceExecutor,
       financeRunner: switchableFinanceRunner,
@@ -147,6 +159,10 @@ final class AppBootstrap {
       taskRunner: switchableTaskRunner,
       realTaskExecutor: taskExecutor,
       realTaskRunner: realTaskRunner,
+      habitExecutor: switchableHabitExecutor,
+      habitRunner: switchableHabitRunner,
+      realHabitExecutor: habitExecutor,
+      realHabitRunner: realHabitRunner,
       workspaceId: WorkspaceContext.defaultWorkspaceId,
     );
 
@@ -168,6 +184,11 @@ final class AppBootstrap {
         runner: switchableTaskRunner,
       ))
       ..addModule(const TasksModule())                          // installs the Tasks feature
+      ..addModule(HabitsStorageModule(                           // binds Habits' persistence
+        executor: switchableHabitExecutor,
+        runner: switchableHabitRunner,
+      ))
+      ..addModule(const HabitsModule())                         // installs the Habits feature
       ..addModule(DemoModule(controller: demoModeController))    // Demo Mode management (Milestone 6)
       ..addModule(OnboardingModule(store: onboardingStore))      // first-run status (Milestone 6)
       ..addModule(const SampleModule());                        // validates Feature Framework
@@ -214,6 +235,12 @@ final class AppBootstrap {
   static Future<File> _defaultTasksStorageFile() async {
     final directory = await getApplicationDocumentsDirectory();
     return File('${directory.path}/tasks_data.json');
+  }
+
+  /// The production Habits storage file: `<app documents dir>/habits_data.json`.
+  static Future<File> _defaultHabitsStorageFile() async {
+    final directory = await getApplicationDocumentsDirectory();
+    return File('${directory.path}/habits_data.json');
   }
 
   /// The production onboarding status file: `<app documents dir>/onboarding_status.json`.

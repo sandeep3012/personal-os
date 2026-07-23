@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:feature_finance/finance.dart';
+import 'package:feature_habits/habits.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -31,6 +32,11 @@ File _tempTasksFile() => File(
       '/tasks_data.json',
     );
 
+File _tempHabitsFile() => File(
+      '${Directory.systemTemp.createTempSync('home_dashboard_habits_test_').path}'
+      '/habits_data.json',
+    );
+
 File _tempOnboardingFile() => File(
       '${Directory.systemTemp.createTempSync('home_dashboard_onboarding_test_').path}'
       '/onboarding_status.json',
@@ -39,7 +45,21 @@ File _tempOnboardingFile() => File(
 Future<AppBootstrap> _boot() => AppBootstrap.boot(
       financeStorageFile: _tempFinanceFile(),
       tasksStorageFile: _tempTasksFile(),
+      habitsStorageFile: _tempHabitsFile(),
       onboardingStatusFile: _tempOnboardingFile(),
+    );
+
+Widget _buildPage(
+  AppBootstrap bootstrap, {
+  VoidCallback? onOpenFinance,
+}) =>
+    MaterialApp(
+      home: HomeDashboardPage(
+        financeViewModel: bootstrap.registry.get<FinanceHomeViewModel>(),
+        tasksViewModel: bootstrap.registry.get<TasksHomeViewModel>(),
+        habitsViewModel: bootstrap.registry.get<HabitsHomeViewModel>(),
+        onOpenFinance: onOpenFinance,
+      ),
     );
 
 void main() {
@@ -47,51 +67,42 @@ void main() {
     testWidgets('shows a loading indicator immediately after mount',
         (tester) async {
       await tester.runAsync(() async {
-        final bootstrap =
-            await _boot();
+        final bootstrap = await _boot();
         addTearDown(bootstrap.shutdown);
 
-        await tester.pumpWidget(MaterialApp(
-          home: HomeDashboardPage(
-            financeViewModel: bootstrap.registry.get<FinanceHomeViewModel>(),
-            tasksViewModel: bootstrap.registry.get<TasksHomeViewModel>(),
-          ),
-        ));
+        await tester.pumpWidget(_buildPage(bootstrap));
 
-        // Both the Finance and Tasks module cards render their own
+        // Finance, Tasks, and Habits module cards each render their own
         // loading indicator independently (design_system ModuleCard —
         // TIS §5 "Loading / Error isolation").
-        expect(find.byType(CircularProgressIndicator), findsNWidgets(2));
+        expect(find.byType(CircularProgressIndicator), findsNWidgets(3));
       });
     });
 
-    testWidgets('shows the greeting header, Finance card, and placeholder '
-        'modules once loaded', (tester) async {
+    testWidgets('shows the greeting header, Finance/Tasks/Habits cards, and '
+        'placeholder modules once loaded', (tester) async {
       await tester.runAsync(() async {
-        final bootstrap =
-            await _boot();
+        final bootstrap = await _boot();
         addTearDown(bootstrap.shutdown);
 
-        await tester.pumpWidget(MaterialApp(
-          home: HomeDashboardPage(
-            financeViewModel: bootstrap.registry.get<FinanceHomeViewModel>(),
-            tasksViewModel: bootstrap.registry.get<TasksHomeViewModel>(),
-          ),
-        ));
+        await tester.pumpWidget(_buildPage(bootstrap));
         await tester.pumpAndSettle();
 
         expect(find.text('Finance'), findsOneWidget);
         expect(find.text('No accounts yet'), findsOneWidget);
         expect(find.text('Tasks'), findsOneWidget);
-        expect(find.text('Active'), findsOneWidget);
-        expect(find.text('Completed today'), findsOneWidget);
+        expect(find.text('Habits'), findsOneWidget);
+        // 'Active' and 'Completed today' each appear once for Tasks and
+        // once for Habits.
+        expect(find.text('Active'), findsNWidgets(2));
+        expect(find.text('Completed today'), findsNWidgets(2));
 
         // The placeholder module grid is further down the page than the
         // default 800x600 test viewport shows — a lazy ListView doesn't
         // build off-screen children at all, so each must be scrolled into
-        // view before it exists in the tree to assert against.
+        // view before it exists in the tree to assert against. Habits is no
+        // longer a placeholder — it now has real data, asserted above.
         for (final label in [
-          'Habits',
           'Goals',
           'Documents',
           'Assets',
@@ -110,18 +121,11 @@ void main() {
     testWidgets('tapping the Finance card invokes onOpenFinance',
         (tester) async {
       await tester.runAsync(() async {
-        final bootstrap =
-            await _boot();
+        final bootstrap = await _boot();
         addTearDown(bootstrap.shutdown);
         var tapped = false;
 
-        await tester.pumpWidget(MaterialApp(
-          home: HomeDashboardPage(
-            financeViewModel: bootstrap.registry.get<FinanceHomeViewModel>(),
-            tasksViewModel: bootstrap.registry.get<TasksHomeViewModel>(),
-            onOpenFinance: () => tapped = true,
-          ),
-        ));
+        await tester.pumpWidget(_buildPage(bootstrap, onOpenFinance: () => tapped = true));
         await tester.pumpAndSettle();
 
         await tester.tap(find.text('Finance'));
@@ -134,18 +138,11 @@ void main() {
     testWidgets('tapping "Open Finance" quick action invokes onOpenFinance',
         (tester) async {
       await tester.runAsync(() async {
-        final bootstrap =
-            await _boot();
+        final bootstrap = await _boot();
         addTearDown(bootstrap.shutdown);
         var tapped = false;
 
-        await tester.pumpWidget(MaterialApp(
-          home: HomeDashboardPage(
-            financeViewModel: bootstrap.registry.get<FinanceHomeViewModel>(),
-            tasksViewModel: bootstrap.registry.get<TasksHomeViewModel>(),
-            onOpenFinance: () => tapped = true,
-          ),
-        ));
+        await tester.pumpWidget(_buildPage(bootstrap, onOpenFinance: () => tapped = true));
         await tester.pumpAndSettle();
 
         await tester.scrollUntilVisible(
@@ -164,16 +161,10 @@ void main() {
     testWidgets('quick action buttons are absent when no callback is supplied',
         (tester) async {
       await tester.runAsync(() async {
-        final bootstrap =
-            await _boot();
+        final bootstrap = await _boot();
         addTearDown(bootstrap.shutdown);
 
-        await tester.pumpWidget(MaterialApp(
-          home: HomeDashboardPage(
-            financeViewModel: bootstrap.registry.get<FinanceHomeViewModel>(),
-            tasksViewModel: bootstrap.registry.get<TasksHomeViewModel>(),
-          ),
-        ));
+        await tester.pumpWidget(_buildPage(bootstrap));
         await tester.pumpAndSettle();
 
         expect(find.text('Open Finance'), findsNothing);
@@ -184,17 +175,11 @@ void main() {
 
     testWidgets('pull-to-refresh reloads the Finance summary', (tester) async {
       await tester.runAsync(() async {
-        final bootstrap =
-            await _boot();
+        final bootstrap = await _boot();
         addTearDown(bootstrap.shutdown);
         final viewModel = bootstrap.registry.get<FinanceHomeViewModel>();
 
-        await tester.pumpWidget(MaterialApp(
-          home: HomeDashboardPage(
-            financeViewModel: viewModel,
-            tasksViewModel: bootstrap.registry.get<TasksHomeViewModel>(),
-          ),
-        ));
+        await tester.pumpWidget(_buildPage(bootstrap));
         await tester.pumpAndSettle();
         expect(find.text('No accounts yet'), findsOneWidget);
 
@@ -208,8 +193,7 @@ void main() {
     testWidgets('adapts the placeholder grid to a wider viewport',
         (tester) async {
       await tester.runAsync(() async {
-        final bootstrap =
-            await _boot();
+        final bootstrap = await _boot();
         addTearDown(bootstrap.shutdown);
 
         tester.view.physicalSize = const Size(1024, 800);
@@ -217,12 +201,7 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
 
-        await tester.pumpWidget(MaterialApp(
-          home: HomeDashboardPage(
-            financeViewModel: bootstrap.registry.get<FinanceHomeViewModel>(),
-            tasksViewModel: bootstrap.registry.get<TasksHomeViewModel>(),
-          ),
-        ));
+        await tester.pumpWidget(_buildPage(bootstrap));
         await tester.pumpAndSettle();
 
         // Still renders every module placeholder at the wider (Expanded)

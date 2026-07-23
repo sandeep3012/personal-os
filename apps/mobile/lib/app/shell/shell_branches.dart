@@ -31,6 +31,9 @@ abstract final class ShellBranches {
   static const String tasksPath = '/tasks';
   static const String tasksName = 'tasks';
 
+  static const String habitsPath = '/habits';
+  static const String habitsName = 'habits';
+
   static const String settingsPath = '/settings';
   static const String settingsName = 'settings';
 
@@ -51,6 +54,11 @@ abstract final class ShellBranches {
       icon: Icons.check_circle_outline,
       selectedIcon: Icons.check_circle,
       label: 'Tasks',
+    ),
+    ShellDestination(
+      icon: Icons.local_fire_department_outlined,
+      selectedIcon: Icons.local_fire_department,
+      label: 'Habits',
     ),
     ShellDestination(
       icon: Icons.settings_outlined,
@@ -77,6 +85,7 @@ abstract final class ShellBranches {
     required Widget Function(BuildContext context, GoRouterState state) homeBuilder,
     required Widget Function(BuildContext context, GoRouterState state) settingsBuilder,
     required Widget Function(BuildContext context, GoRouterState state) tasksBuilder,
+    required Widget Function(BuildContext context, GoRouterState state) habitsBuilder,
   }) =>
       [
         StatefulShellBranch(
@@ -95,6 +104,15 @@ abstract final class ShellBranches {
               path: tasksPath,
               name: tasksName,
               builder: tasksBuilder,
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: habitsPath,
+              name: habitsName,
+              builder: habitsBuilder,
             ),
           ],
         ),

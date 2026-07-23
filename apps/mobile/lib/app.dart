@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:feature_finance/finance.dart';
+import 'package:feature_habits/habits.dart';
 import 'package:feature_sample/sample.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:flutter/material.dart';
@@ -74,6 +75,7 @@ class _PersonalOsAppState extends State<PersonalOsApp>
       homeBuilder: _buildHome,
       settingsBuilder: _buildSettings,
       tasksBuilder: _buildTasks,
+      habitsBuilder: _buildHabits,
       demoModeController: _demoModeController,
       financeRoutes: _buildFinanceRoutes(),
       otherTopLevelRoutes: _buildOtherTopLevelRoutes(),
@@ -91,11 +93,13 @@ class _PersonalOsAppState extends State<PersonalOsApp>
       HomeDashboardPage(
         financeViewModel: widget.bootstrap.registry.get<FinanceHomeViewModel>(),
         tasksViewModel: widget.bootstrap.registry.get<TasksHomeViewModel>(),
+        habitsViewModel: widget.bootstrap.registry.get<HabitsHomeViewModel>(),
         onOpenFinance: () => context.goNamed(FinanceRoutes.root.name),
         onOpenAccounts: () => context.goNamed(FinanceRoutes.accounts.name),
         onOpenTransactions: () =>
             context.goNamed(FinanceRoutes.transactions.name),
         onOpenTasks: () => context.goNamed(TasksRoutes.root.name),
+        onOpenHabits: () => context.goNamed(HabitsRoutes.root.name),
       );
 
   /// Builds the Settings branch's landing screen — the real [SettingsPage]
@@ -107,6 +111,11 @@ class _PersonalOsAppState extends State<PersonalOsApp>
   /// (Milestone 7), mirroring how Finance's routes are built.
   Widget _buildTasks(BuildContext context, GoRouterState state) =>
       TasksPage(viewModel: widget.bootstrap.registry.get<TasksViewModel>());
+
+  /// Builds the Habits branch's landing screen — the real [HabitsPage],
+  /// mirroring how Tasks' routes are built.
+  Widget _buildHabits(BuildContext context, GoRouterState state) =>
+      HabitsPage(viewModel: widget.bootstrap.registry.get<HabitsViewModel>());
 
   /// Builds the first-run onboarding route (Milestone 6 Part B) — a
   /// top-level route outside the shell, exactly like [AppRouter.diagnosticsPath].
