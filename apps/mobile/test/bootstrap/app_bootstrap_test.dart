@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:feature_finance/finance.dart';
+import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_core/config/app_config.dart';
@@ -29,6 +30,11 @@ File _tempHabitsFile() => File(
       '/habits_data.json',
     );
 
+File _tempGoalsFile() => File(
+      '${Directory.systemTemp.createTempSync('goals_bootstrap_test_').path}'
+      '/goals_data.json',
+    );
+
 File _tempOnboardingFile() => File(
       '${Directory.systemTemp.createTempSync('onboarding_bootstrap_test_').path}'
       '/onboarding_status.json',
@@ -38,12 +44,14 @@ Future<AppBootstrap> _boot({
   File? financeStorageFile,
   File? tasksStorageFile,
   File? habitsStorageFile,
+  File? goalsStorageFile,
   File? onboardingStatusFile,
 }) =>
     AppBootstrap.boot(
       financeStorageFile: financeStorageFile ?? _tempFinanceFile(),
       tasksStorageFile: tasksStorageFile ?? _tempTasksFile(),
       habitsStorageFile: habitsStorageFile ?? _tempHabitsFile(),
+      goalsStorageFile: goalsStorageFile ?? _tempGoalsFile(),
       onboardingStatusFile: onboardingStatusFile ?? _tempOnboardingFile(),
     );
 
@@ -194,6 +202,49 @@ void main() {
           'file-backed persistence layer', () async {
         final bootstrap = await _boot();
         final viewModel = bootstrap.registry.get<HabitsViewModel>();
+
+        await expectLater(viewModel.load(), completes);
+        expect(viewModel.state.isError, isFalse);
+
+        await bootstrap.shutdown();
+      });
+    });
+
+    group('Goals persistence binding', () {
+      test('IGoalDatabaseExecutor is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<IGoalDatabaseExecutor>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('IGoalTransactionRunner is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<IGoalTransactionRunner>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('every Goals ViewModel resolves without throwing', () async {
+        final bootstrap = await _boot();
+        expect(
+          () {
+            bootstrap.registry.get<GoalsHomeViewModel>();
+            bootstrap.registry.get<GoalsViewModel>();
+          },
+          returnsNormally,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('GetGoalsUseCase resolves and executes against the '
+          'file-backed persistence layer', () async {
+        final bootstrap = await _boot();
+        final viewModel = bootstrap.registry.get<GoalsViewModel>();
 
         await expectLater(viewModel.load(), completes);
         expect(viewModel.state.isError, isFalse);

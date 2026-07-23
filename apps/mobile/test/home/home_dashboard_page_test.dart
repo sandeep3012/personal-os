@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:feature_finance/finance.dart';
+import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:flutter/material.dart';
@@ -37,6 +38,11 @@ File _tempHabitsFile() => File(
       '/habits_data.json',
     );
 
+File _tempGoalsFile() => File(
+      '${Directory.systemTemp.createTempSync('home_dashboard_goals_test_').path}'
+      '/goals_data.json',
+    );
+
 File _tempOnboardingFile() => File(
       '${Directory.systemTemp.createTempSync('home_dashboard_onboarding_test_').path}'
       '/onboarding_status.json',
@@ -46,6 +52,7 @@ Future<AppBootstrap> _boot() => AppBootstrap.boot(
       financeStorageFile: _tempFinanceFile(),
       tasksStorageFile: _tempTasksFile(),
       habitsStorageFile: _tempHabitsFile(),
+      goalsStorageFile: _tempGoalsFile(),
       onboardingStatusFile: _tempOnboardingFile(),
     );
 
@@ -58,6 +65,7 @@ Widget _buildPage(
         financeViewModel: bootstrap.registry.get<FinanceHomeViewModel>(),
         tasksViewModel: bootstrap.registry.get<TasksHomeViewModel>(),
         habitsViewModel: bootstrap.registry.get<HabitsHomeViewModel>(),
+        goalsViewModel: bootstrap.registry.get<GoalsHomeViewModel>(),
         onOpenFinance: onOpenFinance,
       ),
     );
@@ -74,12 +82,15 @@ void main() {
 
         // Finance, Tasks, and Habits module cards each render their own
         // loading indicator independently (design_system ModuleCard —
-        // TIS §5 "Loading / Error isolation").
+        // TIS §5 "Loading / Error isolation"). Goals' card is below the
+        // default test viewport, so its lazy ListView element hasn't been
+        // built yet — asserted once scrolled into view below.
         expect(find.byType(CircularProgressIndicator), findsNWidgets(3));
       });
     });
 
-    testWidgets('shows the greeting header, Finance/Tasks/Habits cards, and '
+    testWidgets(
+        'shows the greeting header, Finance/Tasks/Habits/Goals cards, and '
         'placeholder modules once loaded', (tester) async {
       await tester.runAsync(() async {
         final bootstrap = await _boot();
@@ -92,18 +103,27 @@ void main() {
         expect(find.text('No accounts yet'), findsOneWidget);
         expect(find.text('Tasks'), findsOneWidget);
         expect(find.text('Habits'), findsOneWidget);
-        // 'Active' and 'Completed today' each appear once for Tasks and
-        // once for Habits.
+        // 'Active' appears once each for Tasks and Habits above the fold;
+        // Goals' card (also 'Active') is scrolled into view and asserted
+        // separately below.
         expect(find.text('Active'), findsNWidgets(2));
         expect(find.text('Completed today'), findsNWidgets(2));
 
-        // The placeholder module grid is further down the page than the
-        // default 800x600 test viewport shows — a lazy ListView doesn't
-        // build off-screen children at all, so each must be scrolled into
-        // view before it exists in the tree to assert against. Habits is no
-        // longer a placeholder — it now has real data, asserted above.
+        // The placeholder module grid — and Goals' card — is further down
+        // the page than the default 800x600 test viewport shows — a lazy
+        // ListView doesn't build off-screen children at all, so each must
+        // be scrolled into view before it exists in the tree to assert
+        // against. Habits is no longer a placeholder — it now has real
+        // data, asserted above.
+        await tester.scrollUntilVisible(
+          find.text('Goals'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(find.text('Goals'), findsOneWidget);
+        expect(find.text('Active'), findsNWidgets(3));
+
         for (final label in [
-          'Goals',
           'Documents',
           'Assets',
           'AI Assistant',
@@ -207,11 +227,11 @@ void main() {
         // Still renders every module placeholder at the wider (Expanded)
         // breakpoint — the layout adapts column count, not content.
         await tester.scrollUntilVisible(
-          find.text('Goals'),
+          find.text('Documents'),
           200,
           scrollable: find.byType(Scrollable).first,
         );
-        expect(find.text('Goals'), findsOneWidget);
+        expect(find.text('Documents'), findsOneWidget);
         await tester.scrollUntilVisible(
           find.text('AI Assistant'),
           200,

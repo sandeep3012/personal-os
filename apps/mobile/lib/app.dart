@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:feature_finance/finance.dart';
+import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
 import 'package:feature_sample/sample.dart';
 import 'package:feature_tasks/tasks.dart';
@@ -76,6 +77,7 @@ class _PersonalOsAppState extends State<PersonalOsApp>
       settingsBuilder: _buildSettings,
       tasksBuilder: _buildTasks,
       habitsBuilder: _buildHabits,
+      goalsBuilder: _buildGoals,
       demoModeController: _demoModeController,
       financeRoutes: _buildFinanceRoutes(),
       otherTopLevelRoutes: _buildOtherTopLevelRoutes(),
@@ -94,12 +96,14 @@ class _PersonalOsAppState extends State<PersonalOsApp>
         financeViewModel: widget.bootstrap.registry.get<FinanceHomeViewModel>(),
         tasksViewModel: widget.bootstrap.registry.get<TasksHomeViewModel>(),
         habitsViewModel: widget.bootstrap.registry.get<HabitsHomeViewModel>(),
+        goalsViewModel: widget.bootstrap.registry.get<GoalsHomeViewModel>(),
         onOpenFinance: () => context.goNamed(FinanceRoutes.root.name),
         onOpenAccounts: () => context.goNamed(FinanceRoutes.accounts.name),
         onOpenTransactions: () =>
             context.goNamed(FinanceRoutes.transactions.name),
         onOpenTasks: () => context.goNamed(TasksRoutes.root.name),
         onOpenHabits: () => context.goNamed(HabitsRoutes.root.name),
+        onOpenGoals: () => context.goNamed(GoalsRoutes.root.name),
       );
 
   /// Builds the Settings branch's landing screen — the real [SettingsPage]
@@ -116,6 +120,11 @@ class _PersonalOsAppState extends State<PersonalOsApp>
   /// mirroring how Tasks' routes are built.
   Widget _buildHabits(BuildContext context, GoRouterState state) =>
       HabitsPage(viewModel: widget.bootstrap.registry.get<HabitsViewModel>());
+
+  /// Builds the Goals branch's landing screen — the real [GoalsPage],
+  /// mirroring how Habits' routes are built.
+  Widget _buildGoals(BuildContext context, GoRouterState state) =>
+      GoalsPage(viewModel: widget.bootstrap.registry.get<GoalsViewModel>());
 
   /// Builds the first-run onboarding route (Milestone 6 Part B) — a
   /// top-level route outside the shell, exactly like [AppRouter.diagnosticsPath].

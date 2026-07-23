@@ -1,6 +1,7 @@
 import 'package:application/application.dart' show AsyncState;
 import 'package:design_system/design_system.dart';
 import 'package:feature_finance/finance.dart';
+import 'package:feature_goals/goals.dart' show GoalsDashboardSummary, GoalsHomeViewModel;
 import 'package:feature_habits/habits.dart' show HabitsDashboardSummary, HabitsHomeViewModel;
 import 'package:feature_tasks/tasks.dart' show TasksDashboardSummary, TasksHomeViewModel;
 import 'package:flutter/material.dart';
@@ -25,21 +26,25 @@ final class HomeDashboardPage extends StatefulWidget {
     required this.financeViewModel,
     required this.tasksViewModel,
     required this.habitsViewModel,
+    required this.goalsViewModel,
     this.onOpenFinance,
     this.onOpenAccounts,
     this.onOpenTransactions,
     this.onOpenTasks,
     this.onOpenHabits,
+    this.onOpenGoals,
   });
 
   final FinanceHomeViewModel financeViewModel;
   final TasksHomeViewModel tasksViewModel;
   final HabitsHomeViewModel habitsViewModel;
+  final GoalsHomeViewModel goalsViewModel;
   final VoidCallback? onOpenFinance;
   final VoidCallback? onOpenAccounts;
   final VoidCallback? onOpenTransactions;
   final VoidCallback? onOpenTasks;
   final VoidCallback? onOpenHabits;
+  final VoidCallback? onOpenGoals;
 
   @override
   State<HomeDashboardPage> createState() => _HomeDashboardPageState();
@@ -52,6 +57,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
     widget.financeViewModel.load();
     widget.tasksViewModel.load();
     widget.habitsViewModel.load();
+    widget.goalsViewModel.load();
   }
 
   @override
@@ -66,14 +72,18 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('Home')),
       body: ListenableBuilder(
-        listenable: Listenable.merge(
-          [widget.financeViewModel, widget.tasksViewModel, widget.habitsViewModel],
-        ),
+        listenable: Listenable.merge([
+          widget.financeViewModel,
+          widget.tasksViewModel,
+          widget.habitsViewModel,
+          widget.goalsViewModel,
+        ]),
         builder: (context, _) => RefreshIndicator(
           onRefresh: () => Future.wait([
             widget.financeViewModel.refresh(),
             widget.tasksViewModel.refresh(),
             widget.habitsViewModel.refresh(),
+            widget.goalsViewModel.refresh(),
           ]),
           child: ListView(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
@@ -112,6 +122,17 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
                   ),
                 ),
               ),
+              const SizedBox(height: AppSpacing.md),
+              _entrance(
+                2,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: _GoalsModuleCard(
+                    state: widget.goalsViewModel.state,
+                    onTap: widget.onOpenGoals,
+                  ),
+                ),
+              ),
               const SizedBox(height: AppSpacing.lg),
               _entrance(
                 3,
@@ -137,6 +158,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
                   onOpenTransactions: widget.onOpenTransactions,
                   onOpenTasks: widget.onOpenTasks,
                   onOpenHabits: widget.onOpenHabits,
+                  onOpenGoals: widget.onOpenGoals,
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -453,6 +475,60 @@ class _HabitsCardBody extends StatelessWidget {
   }
 }
 
+class _GoalsModuleCard extends StatelessWidget {
+  const _GoalsModuleCard({required this.state, this.onTap});
+
+  final AsyncState<GoalsDashboardSummary> state;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semanticColors = theme.extension<AppSemanticColors>();
+    final accent = semanticColors?.moduleAccent('goals') ?? theme.colorScheme.primary;
+
+    return ModuleCard<GoalsDashboardSummary>(
+      icon: Icons.flag_outlined,
+      accentColor: accent,
+      title: 'Goals',
+      state: state,
+      loadingHeight: 96,
+      onTap: onTap,
+      semanticLabel: 'Goals summary',
+      contentBuilder: (context, data) => _GoalsCardBody(data: data),
+    );
+  }
+}
+
+class _GoalsCardBody extends StatelessWidget {
+  const _GoalsCardBody({required this.data});
+
+  final GoalsDashboardSummary data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: StatCard(
+            icon: Icons.flag_outlined,
+            label: 'Active',
+            value: data.activeCount.toDouble(),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: StatCard(
+            icon: Icons.emoji_events_outlined,
+            label: 'Completed',
+            value: data.completedCount.toDouble(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _MiniStat extends StatelessWidget {
   const _MiniStat({
     required this.icon,
@@ -567,6 +643,7 @@ class _QuickActionsSection extends StatelessWidget {
     this.onOpenTransactions,
     this.onOpenTasks,
     this.onOpenHabits,
+    this.onOpenGoals,
   });
 
   final VoidCallback? onOpenFinance;
@@ -574,6 +651,7 @@ class _QuickActionsSection extends StatelessWidget {
   final VoidCallback? onOpenTransactions;
   final VoidCallback? onOpenTasks;
   final VoidCallback? onOpenHabits;
+  final VoidCallback? onOpenGoals;
 
   @override
   Widget build(BuildContext context) {
@@ -617,6 +695,12 @@ class _QuickActionsSection extends StatelessWidget {
                   label: 'Log Habit',
                   onTap: onOpenHabits!,
                 ),
+              if (onOpenGoals != null)
+                QuickActionButton(
+                  icon: Icons.flag_outlined,
+                  label: 'Add Goal',
+                  onTap: onOpenGoals!,
+                ),
             ],
           ),
         ),
@@ -642,23 +726,6 @@ class _PlaceholderModuleGrid extends StatelessWidget {
         semanticColors?.moduleAccent(moduleId) ?? theme.colorScheme.primary;
 
     final cards = <Widget>[
-      SummaryCard(
-        icon: Icons.flag_outlined,
-        accentColor: accentFor('goals'),
-        title: 'Goals',
-        body: Row(
-          children: [
-            const ProgressRing(progress: 0, label: '0%'),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Text(
-                'No goals yet',
-                style: theme.textTheme.bodyMedium,
-              ),
-            ),
-          ],
-        ),
-      ),
       SummaryCard(
         icon: Icons.calendar_today_outlined,
         accentColor: accentFor('calendar'),
