@@ -50,7 +50,8 @@ void main() {
     registry = ServiceRegistry()
       ..registerSingleton<FeatureRegistry>(FeatureRegistry())
       ..registerSingleton<RouteRegistry>(RouteRegistry())
-      ..registerSingleton<StartupPipeline>(StartupPipeline());
+      ..registerSingleton<StartupPipeline>(StartupPipeline())
+      ..registerSingleton<IdGenerator>(const UuidGenerator());
 
     final executor = FakeFinanceDatabaseExecutor();
     registry

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:feature_finance/finance.dart';
 import 'package:feature_sample/sample.dart';
+import 'package:feature_tasks/tasks.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:personal_os/app/bootstrap/app_bootstrap.dart';
@@ -72,6 +73,7 @@ class _PersonalOsAppState extends State<PersonalOsApp>
       config: widget.bootstrap.config,
       homeBuilder: _buildHome,
       settingsBuilder: _buildSettings,
+      tasksBuilder: _buildTasks,
       demoModeController: _demoModeController,
       financeRoutes: _buildFinanceRoutes(),
       otherTopLevelRoutes: _buildOtherTopLevelRoutes(),
@@ -81,23 +83,30 @@ class _PersonalOsAppState extends State<PersonalOsApp>
   }
 
   /// Builds the Home branch's landing screen — the real [HomeDashboardPage]
-  /// (Milestone 5 Part B), replacing the Milestone 1A placeholder. Reuses
-  /// the same [FinanceNavCallbacks] composition point as every Finance page
-  /// (ADR-003) so Home's Quick Actions/module card navigate identically to
-  /// Finance's own drawer.
+  /// (Milestone 5 Part B; extended with Tasks in Milestone 7). Reuses the
+  /// same [FinanceNavCallbacks] composition point as every Finance page
+  /// (ADR-003) so Home's Quick Actions/module cards navigate identically to
+  /// Finance's/Tasks' own screens.
   Widget _buildHome(BuildContext context, GoRouterState state) =>
       HomeDashboardPage(
         financeViewModel: widget.bootstrap.registry.get<FinanceHomeViewModel>(),
+        tasksViewModel: widget.bootstrap.registry.get<TasksHomeViewModel>(),
         onOpenFinance: () => context.goNamed(FinanceRoutes.root.name),
         onOpenAccounts: () => context.goNamed(FinanceRoutes.accounts.name),
         onOpenTransactions: () =>
             context.goNamed(FinanceRoutes.transactions.name),
+        onOpenTasks: () => context.goNamed(TasksRoutes.root.name),
       );
 
   /// Builds the Settings branch's landing screen — the real [SettingsPage]
   /// (Milestone 6 Part E), replacing the Milestone 1A placeholder.
   Widget _buildSettings(BuildContext context, GoRouterState state) =>
       SettingsPage(demoModeController: _demoModeController);
+
+  /// Builds the Tasks branch's landing screen — the real [TasksPage]
+  /// (Milestone 7), mirroring how Finance's routes are built.
+  Widget _buildTasks(BuildContext context, GoRouterState state) =>
+      TasksPage(viewModel: widget.bootstrap.registry.get<TasksViewModel>());
 
   /// Builds the first-run onboarding route (Milestone 6 Part B) — a
   /// top-level route outside the shell, exactly like [AppRouter.diagnosticsPath].

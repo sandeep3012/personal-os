@@ -6,6 +6,7 @@ import 'package:feature_finance/src/presentation/pages/transactions_page.dart';
 import 'package:feature_finance/src/presentation/routes/finance_routes.dart';
 import 'package:feature_finance/src/presentation/viewmodels/transactions_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:platform_core/utils/id_generator.dart';
 import 'package:platform_runtime/registry/service_registry.dart';
 
 import '../data/dao/fake_finance_database_executor.dart';
@@ -23,6 +24,7 @@ void main() {
       ..registerSingleton<FeatureRegistry>(FeatureRegistry())
       ..registerSingleton<RouteRegistry>(RouteRegistry())
       ..registerSingleton<StartupPipeline>(StartupPipeline())
+      ..registerSingleton<IdGenerator>(const UuidGenerator())
       ..registerSingleton<WorkspaceContext>(
         WorkspaceContext(initialWorkspaceId: WorkspaceContext.defaultWorkspaceId),
       );

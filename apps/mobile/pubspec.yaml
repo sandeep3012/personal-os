@@ -12,6 +12,7 @@ dependencies:
   design_system: any
   feature_finance: any
   feature_sample: any
+  feature_tasks: any
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8

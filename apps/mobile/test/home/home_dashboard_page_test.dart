@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:feature_finance/finance.dart';
+import 'package:feature_tasks/tasks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_os/app/bootstrap/app_bootstrap.dart';
@@ -25,6 +26,11 @@ File _tempFinanceFile() => File(
       '/finance_data.json',
     );
 
+File _tempTasksFile() => File(
+      '${Directory.systemTemp.createTempSync('home_dashboard_tasks_test_').path}'
+      '/tasks_data.json',
+    );
+
 File _tempOnboardingFile() => File(
       '${Directory.systemTemp.createTempSync('home_dashboard_onboarding_test_').path}'
       '/onboarding_status.json',
@@ -32,6 +38,7 @@ File _tempOnboardingFile() => File(
 
 Future<AppBootstrap> _boot() => AppBootstrap.boot(
       financeStorageFile: _tempFinanceFile(),
+      tasksStorageFile: _tempTasksFile(),
       onboardingStatusFile: _tempOnboardingFile(),
     );
 
@@ -47,10 +54,14 @@ void main() {
         await tester.pumpWidget(MaterialApp(
           home: HomeDashboardPage(
             financeViewModel: bootstrap.registry.get<FinanceHomeViewModel>(),
+            tasksViewModel: bootstrap.registry.get<TasksHomeViewModel>(),
           ),
         ));
 
-        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        // Both the Finance and Tasks module cards render their own
+        // loading indicator independently (design_system ModuleCard —
+        // TIS §5 "Loading / Error isolation").
+        expect(find.byType(CircularProgressIndicator), findsNWidgets(2));
       });
     });
 
@@ -64,19 +75,22 @@ void main() {
         await tester.pumpWidget(MaterialApp(
           home: HomeDashboardPage(
             financeViewModel: bootstrap.registry.get<FinanceHomeViewModel>(),
+            tasksViewModel: bootstrap.registry.get<TasksHomeViewModel>(),
           ),
         ));
         await tester.pumpAndSettle();
 
         expect(find.text('Finance'), findsOneWidget);
         expect(find.text('No accounts yet'), findsOneWidget);
+        expect(find.text('Tasks'), findsOneWidget);
+        expect(find.text('Active'), findsOneWidget);
+        expect(find.text('Completed today'), findsOneWidget);
 
         // The placeholder module grid is further down the page than the
         // default 800x600 test viewport shows — a lazy ListView doesn't
         // build off-screen children at all, so each must be scrolled into
         // view before it exists in the tree to assert against.
         for (final label in [
-          'Tasks',
           'Habits',
           'Goals',
           'Documents',
@@ -104,6 +118,7 @@ void main() {
         await tester.pumpWidget(MaterialApp(
           home: HomeDashboardPage(
             financeViewModel: bootstrap.registry.get<FinanceHomeViewModel>(),
+            tasksViewModel: bootstrap.registry.get<TasksHomeViewModel>(),
             onOpenFinance: () => tapped = true,
           ),
         ));
@@ -127,12 +142,17 @@ void main() {
         await tester.pumpWidget(MaterialApp(
           home: HomeDashboardPage(
             financeViewModel: bootstrap.registry.get<FinanceHomeViewModel>(),
+            tasksViewModel: bootstrap.registry.get<TasksHomeViewModel>(),
             onOpenFinance: () => tapped = true,
           ),
         ));
         await tester.pumpAndSettle();
 
-        await tester.ensureVisible(find.text('Open Finance'));
+        await tester.scrollUntilVisible(
+          find.text('Open Finance'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
         await tester.pumpAndSettle();
         await tester.tap(find.text('Open Finance'));
         await tester.pumpAndSettle();
@@ -151,6 +171,7 @@ void main() {
         await tester.pumpWidget(MaterialApp(
           home: HomeDashboardPage(
             financeViewModel: bootstrap.registry.get<FinanceHomeViewModel>(),
+            tasksViewModel: bootstrap.registry.get<TasksHomeViewModel>(),
           ),
         ));
         await tester.pumpAndSettle();
@@ -169,7 +190,10 @@ void main() {
         final viewModel = bootstrap.registry.get<FinanceHomeViewModel>();
 
         await tester.pumpWidget(MaterialApp(
-          home: HomeDashboardPage(financeViewModel: viewModel),
+          home: HomeDashboardPage(
+            financeViewModel: viewModel,
+            tasksViewModel: bootstrap.registry.get<TasksHomeViewModel>(),
+          ),
         ));
         await tester.pumpAndSettle();
         expect(find.text('No accounts yet'), findsOneWidget);
@@ -196,6 +220,7 @@ void main() {
         await tester.pumpWidget(MaterialApp(
           home: HomeDashboardPage(
             financeViewModel: bootstrap.registry.get<FinanceHomeViewModel>(),
+            tasksViewModel: bootstrap.registry.get<TasksHomeViewModel>(),
           ),
         ));
         await tester.pumpAndSettle();

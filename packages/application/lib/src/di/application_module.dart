@@ -4,6 +4,7 @@ import 'package:application/src/routing/route_registry.dart';
 import 'package:application/src/startup/startup_pipeline.dart';
 import 'package:application/src/workspace/workspace_context.dart';
 import 'package:platform_core/di/i_dependency_registrar.dart';
+import 'package:platform_core/utils/id_generator.dart';
 import 'package:platform_runtime/event_bus/event_bus.dart';
 import 'package:platform_runtime/event_bus/i_event_bus.dart';
 import 'package:platform_runtime/modules/runtime_module.dart';
@@ -25,6 +26,7 @@ import 'package:platform_runtime/modules/runtime_module.dart';
 /// | [StartupPipeline] | Empty pipeline | Feature modules add steps |
 /// | [FeatureRegistry] | Empty catalog | Feature modules register metadata |
 /// | [WorkspaceContext] | Seeded with [WorkspaceContext.defaultWorkspaceId] | ADR-004 — feature ViewModels read/subscribe, never invent their own workspace id |
+/// | [IdGenerator] | [UuidGenerator] | Cross-feature utility — every `FeatureModule` reads it from the locator (`locator.get<IdGenerator>()`); no feature module registers its own, the same rule [WorkspaceContext] already follows. Registering it per-feature (as both `FinanceModule` and `TasksModule` originally did) throws once two such modules load together, since [ServiceRegistry] rejects a duplicate registration for the same type. |
 ///
 /// ## Example
 ///
@@ -59,6 +61,7 @@ final class ApplicationModule extends RuntimeModule {
     registrar.registerSingleton<StartupPipeline>(pipeline);
     registrar.registerSingleton<FeatureRegistry>(featureRegistry);
     registrar.registerSingleton<WorkspaceContext>(workspaceContext);
+    registrar.registerSingleton<IdGenerator>(const UuidGenerator());
   }
 
   @override

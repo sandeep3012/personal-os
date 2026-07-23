@@ -12,6 +12,7 @@ import 'package:feature_finance/src/presentation/viewmodels/categories_view_mode
 import 'package:feature_finance/src/presentation/viewmodels/finance_home_view_model.dart';
 import 'package:feature_finance/src/presentation/viewmodels/transactions_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:platform_core/utils/id_generator.dart';
 import 'package:platform_runtime/registry/service_registry.dart';
 
 import '../data/dao/fake_finance_database_executor.dart';
@@ -19,9 +20,9 @@ import '../data/repositories/fake_finance_transaction_runner.dart';
 
 /// Seeds the two leaf interfaces with no production implementation yet
 /// (same pattern used throughout the DI/integration test suites), plus a
-/// [WorkspaceContext] — normally registered by `ApplicationModule`
-/// (ADR-004), but these tests build a registry manually rather than via a
-/// real `ApplicationModule`.
+/// [WorkspaceContext] and [IdGenerator] — normally registered by
+/// `ApplicationModule` (ADR-004), but these tests build a registry manually
+/// rather than via a real `ApplicationModule`.
 void _seedStorageStandIns(ServiceRegistry registry) {
   final executor = FakeFinanceDatabaseExecutor();
   registry
@@ -31,7 +32,8 @@ void _seedStorageStandIns(ServiceRegistry registry) {
     )
     ..registerSingleton<WorkspaceContext>(
       WorkspaceContext(initialWorkspaceId: WorkspaceContext.defaultWorkspaceId),
-    );
+    )
+    ..registerSingleton<IdGenerator>(const UuidGenerator());
 }
 
 /// Verifies the Finance presentation foundation composes correctly: routes

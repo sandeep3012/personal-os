@@ -1,34 +1,39 @@
 import 'package:application/application.dart' show AsyncState;
 import 'package:design_system/design_system.dart';
 import 'package:feature_finance/finance.dart';
+import 'package:feature_tasks/tasks.dart' show TasksDashboardSummary, TasksHomeViewModel;
 import 'package:flutter/material.dart';
 
 /// The application's true landing screen (Milestone 5 Part B — TIS §1
-/// Milestone 2 "Home Dashboard"), replacing the Milestone 1A placeholder.
+/// Milestone 2 "Home Dashboard"; extended with Tasks in Milestone 7).
 ///
-/// Built entirely from `package:design_system` components. Finance is the
-/// only module with real data today; every other module (Tasks, Habits,
+/// Built entirely from `package:design_system` components. Finance and Tasks
+/// are the only modules with real data today; every other module (Habits,
 /// Goals, Calendar, Documents, Assets, AI) renders a static, visually
 /// polished placeholder [SummaryCard] — no fake repositories, ViewModels,
 /// or business logic are invented for them (Milestone 5 Part B scope).
 ///
-/// The Finance summary renders through [ModuleCard], which isolates its own
+/// Each module summary renders through [ModuleCard], which isolates its own
 /// loading/error state from the rest of the page (TIS §5 "Loading / Error
-/// isolation") — a failed Finance load never blanks the placeholder
-/// sections below it.
+/// isolation") — a failed Finance or Tasks load never blanks the other
+/// module's card or the placeholder sections below.
 final class HomeDashboardPage extends StatefulWidget {
   const HomeDashboardPage({
     super.key,
     required this.financeViewModel,
+    required this.tasksViewModel,
     this.onOpenFinance,
     this.onOpenAccounts,
     this.onOpenTransactions,
+    this.onOpenTasks,
   });
 
   final FinanceHomeViewModel financeViewModel;
+  final TasksHomeViewModel tasksViewModel;
   final VoidCallback? onOpenFinance;
   final VoidCallback? onOpenAccounts;
   final VoidCallback? onOpenTransactions;
+  final VoidCallback? onOpenTasks;
 
   @override
   State<HomeDashboardPage> createState() => _HomeDashboardPageState();
@@ -39,6 +44,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
   void initState() {
     super.initState();
     widget.financeViewModel.load();
+    widget.tasksViewModel.load();
   }
 
   @override
@@ -53,9 +59,12 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('Home')),
       body: ListenableBuilder(
-        listenable: widget.financeViewModel,
+        listenable: Listenable.merge([widget.financeViewModel, widget.tasksViewModel]),
         builder: (context, _) => RefreshIndicator(
-          onRefresh: widget.financeViewModel.refresh,
+          onRefresh: () => Future.wait([
+            widget.financeViewModel.refresh(),
+            widget.tasksViewModel.refresh(),
+          ]),
           child: ListView(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
             children: [
@@ -71,9 +80,20 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.md),
               _entrance(
                 2,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: _TasksModuleCard(
+                    state: widget.tasksViewModel.state,
+                    onTap: widget.onOpenTasks,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              _entrance(
+                3,
                 _RecentTransactionsSection(
                   data: widget.financeViewModel.state.dataOrNull,
                   onSeeAll: widget.onOpenTransactions,
@@ -81,7 +101,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
               ),
               const SizedBox(height: AppSpacing.lg),
               _entrance(
-                3,
+                4,
                 _AccountOverviewSection(
                   data: widget.financeViewModel.state.dataOrNull,
                   onSeeAll: widget.onOpenAccounts,
@@ -89,20 +109,21 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
               ),
               const SizedBox(height: AppSpacing.lg),
               _entrance(
-                4,
+                5,
                 _QuickActionsSection(
                   onOpenFinance: widget.onOpenFinance,
                   onOpenAccounts: widget.onOpenAccounts,
                   onOpenTransactions: widget.onOpenTransactions,
+                  onOpenTasks: widget.onOpenTasks,
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
               _entrance(
-                5,
+                6,
                 const SectionHeader(title: 'More modules'),
               ),
               _entrance(
-                6,
+                7,
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                   child: _PlaceholderModuleGrid(columns: placeholderColumns),
@@ -302,6 +323,60 @@ class _FinanceCardBody extends StatelessWidget {
   }
 }
 
+class _TasksModuleCard extends StatelessWidget {
+  const _TasksModuleCard({required this.state, this.onTap});
+
+  final AsyncState<TasksDashboardSummary> state;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semanticColors = theme.extension<AppSemanticColors>();
+    final accent = semanticColors?.moduleAccent('tasks') ?? theme.colorScheme.primary;
+
+    return ModuleCard<TasksDashboardSummary>(
+      icon: Icons.check_circle_outline,
+      accentColor: accent,
+      title: 'Tasks',
+      state: state,
+      loadingHeight: 96,
+      onTap: onTap,
+      semanticLabel: 'Tasks summary',
+      contentBuilder: (context, data) => _TasksCardBody(data: data),
+    );
+  }
+}
+
+class _TasksCardBody extends StatelessWidget {
+  const _TasksCardBody({required this.data});
+
+  final TasksDashboardSummary data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: StatCard(
+            icon: Icons.pending_actions_outlined,
+            label: 'Active',
+            value: data.activeCount.toDouble(),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: StatCard(
+            icon: Icons.task_alt_outlined,
+            label: 'Completed today',
+            value: data.completedTodayCount.toDouble(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _MiniStat extends StatelessWidget {
   const _MiniStat({
     required this.icon,
@@ -414,11 +489,13 @@ class _QuickActionsSection extends StatelessWidget {
     this.onOpenFinance,
     this.onOpenAccounts,
     this.onOpenTransactions,
+    this.onOpenTasks,
   });
 
   final VoidCallback? onOpenFinance;
   final VoidCallback? onOpenAccounts;
   final VoidCallback? onOpenTransactions;
+  final VoidCallback? onOpenTasks;
 
   @override
   Widget build(BuildContext context) {
@@ -450,6 +527,12 @@ class _QuickActionsSection extends StatelessWidget {
                   label: 'View Transactions',
                   onTap: onOpenTransactions!,
                 ),
+              if (onOpenTasks != null)
+                QuickActionButton(
+                  icon: Icons.add_task_outlined,
+                  label: 'Add Task',
+                  onTap: onOpenTasks!,
+                ),
             ],
           ),
         ),
@@ -475,12 +558,6 @@ class _PlaceholderModuleGrid extends StatelessWidget {
         semanticColors?.moduleAccent(moduleId) ?? theme.colorScheme.primary;
 
     final cards = <Widget>[
-      SummaryCard(
-        icon: Icons.check_circle_outline,
-        accentColor: accentFor('tasks'),
-        title: 'Tasks',
-        body: const _ComingSoonBody(message: 'Task tracking is coming soon'),
-      ),
       SummaryCard(
         icon: Icons.repeat,
         accentColor: accentFor('habits'),

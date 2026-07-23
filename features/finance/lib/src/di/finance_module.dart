@@ -211,7 +211,9 @@ final class FinanceModule extends FeatureModule {
     IDependencyRegistrar registrar,
     IServiceLocator locator,
   ) {
-    registrar.registerLazySingleton<IdGenerator>(() => const UuidGenerator());
+    // IdGenerator is registered once by ApplicationModule (cross-feature
+    // utility, same rule as WorkspaceContext) — resolved here via the
+    // locator, never re-registered by this module.
     registrar.registerLazySingleton<BalanceCalculationService>(
       () => const BalanceCalculationService(),
     );

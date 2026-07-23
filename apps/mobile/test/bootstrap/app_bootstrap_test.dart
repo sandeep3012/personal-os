@@ -18,6 +18,11 @@ File _tempFinanceFile() => File(
       '/finance_data.json',
     );
 
+File _tempTasksFile() => File(
+      '${Directory.systemTemp.createTempSync('tasks_bootstrap_test_').path}'
+      '/tasks_data.json',
+    );
+
 File _tempOnboardingFile() => File(
       '${Directory.systemTemp.createTempSync('onboarding_bootstrap_test_').path}'
       '/onboarding_status.json',
@@ -25,10 +30,12 @@ File _tempOnboardingFile() => File(
 
 Future<AppBootstrap> _boot({
   File? financeStorageFile,
+  File? tasksStorageFile,
   File? onboardingStatusFile,
 }) =>
     AppBootstrap.boot(
       financeStorageFile: financeStorageFile ?? _tempFinanceFile(),
+      tasksStorageFile: tasksStorageFile ?? _tempTasksFile(),
       onboardingStatusFile: onboardingStatusFile ?? _tempOnboardingFile(),
     );
 

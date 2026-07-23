@@ -11,6 +11,7 @@ import 'package:feature_finance/src/di/finance_module.dart';
 import 'package:feature_finance/src/domain/repositories/i_account_repository.dart';
 import 'package:feature_finance/src/domain/repositories/i_transaction_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:platform_core/utils/id_generator.dart';
 import 'package:platform_runtime/registry/service_registry.dart';
 
 import '../data/dao/fake_finance_database_executor.dart';
@@ -33,7 +34,8 @@ void main() {
     registry
       ..registerSingleton<FeatureRegistry>(FeatureRegistry())
       ..registerSingleton<RouteRegistry>(RouteRegistry())
-      ..registerSingleton<StartupPipeline>(StartupPipeline());
+      ..registerSingleton<StartupPipeline>(StartupPipeline())
+      ..registerSingleton<IdGenerator>(const UuidGenerator());
   }
 
   setUp(() {

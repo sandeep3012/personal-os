@@ -1,8 +1,10 @@
 import 'package:feature_finance/finance.dart';
+import 'package:feature_tasks/tasks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_os/app/demo/demo_mode_controller.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
+import 'package:personal_os/app/demo/switchable_task_storage.dart';
 import 'package:personal_os/app/settings/settings_page.dart';
 
 const _ws = 'ws-settings-test';
@@ -10,11 +12,17 @@ const _ws = 'ws-settings-test';
 DemoModeController _controller() {
   final realExecutor = InMemoryFinanceDatabaseExecutor();
   final realRunner = InMemoryFinanceTransactionRunner(realExecutor);
+  final realTaskExecutor = InMemoryTaskDatabaseExecutor();
+  final realTaskRunner = InMemoryTaskTransactionRunner(realTaskExecutor);
   return DemoModeController(
-    executor: SwitchableFinanceDatabaseExecutor(realExecutor),
-    runner: SwitchableFinanceTransactionRunner(realRunner),
-    realExecutor: realExecutor,
-    realRunner: realRunner,
+    financeExecutor: SwitchableFinanceDatabaseExecutor(realExecutor),
+    financeRunner: SwitchableFinanceTransactionRunner(realRunner),
+    realFinanceExecutor: realExecutor,
+    realFinanceRunner: realRunner,
+    taskExecutor: SwitchableTaskDatabaseExecutor(realTaskExecutor),
+    taskRunner: SwitchableTaskTransactionRunner(realTaskRunner),
+    realTaskExecutor: realTaskExecutor,
+    realTaskRunner: realTaskRunner,
     workspaceId: _ws,
   );
 }

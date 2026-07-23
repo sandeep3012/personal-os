@@ -5,7 +5,7 @@ publish_to: none
 environment:
   sdk: ">=3.11.0 <4.0.0"
 
-# Dart native workspace — list every package path explicitly.
+# Dart native workspace â€” list every package path explicitly.
 # Add entries here as new packages are created under packages/, features/, shared/.
 workspace:
   - apps/mobile
@@ -16,6 +16,7 @@ workspace:
   - packages/platform_storage
   - features/finance
   - features/sample
+  - features/tasks
 
 dev_dependencies:
   melos: ^8.2.0
@@ -28,7 +29,7 @@ dev_dependencies:
 # containing spaces ("'C:\Program' is not recognized..."), failing Android
 # builds even though objective_c/path_provider_foundation are never used on
 # Android (path_provider_android is). Pinned to the last version before
-# objective_c/native-assets were introduced — no native build hook, so
+# objective_c/native-assets were introduced â€” no native build hook, so
 # nothing is built for any platform. Remove once either upstream fixes the
 # Windows native-assets path-quoting bug or path_provider_foundation's
 # native asset step becomes platform-conditional.

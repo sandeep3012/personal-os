@@ -19,14 +19,17 @@ final class ShellDestination {
 }
 
 /// The Personal OS shell's top-level branches (Milestone 1A: Home, Finance,
-/// Settings only — TIS §1 Milestone 1 scope).
+/// Settings; Tasks added in Milestone 7).
 ///
-/// Adding a future module (Milestone 7 / TIS §8) means adding one branch
-/// here and one [ShellDestination] here — no other app-layer file changes
-/// (TIS §4 "Future extensibility").
+/// Adding a future module means adding one branch here and one
+/// [ShellDestination] here — no other app-layer file changes (TIS §4
+/// "Future extensibility").
 abstract final class ShellBranches {
   static const String homePath = '/';
   static const String homeName = 'home';
+
+  static const String tasksPath = '/tasks';
+  static const String tasksName = 'tasks';
 
   static const String settingsPath = '/settings';
   static const String settingsName = 'settings';
@@ -43,6 +46,11 @@ abstract final class ShellBranches {
       icon: Icons.account_balance_wallet_outlined,
       selectedIcon: Icons.account_balance_wallet,
       label: 'Finance',
+    ),
+    ShellDestination(
+      icon: Icons.check_circle_outline,
+      selectedIcon: Icons.check_circle,
+      label: 'Tasks',
     ),
     ShellDestination(
       icon: Icons.settings_outlined,
@@ -62,10 +70,13 @@ abstract final class ShellBranches {
   /// exactly like [financeRoutes]' own builders.
   /// [settingsBuilder] renders the Settings branch's landing screen — the
   /// real [SettingsPage] (Milestone 6 Part E), DI-resolved the same way.
+  /// [tasksBuilder] renders the Tasks branch's landing screen — the real
+  /// [TasksPage] (Milestone 7), DI-resolved the same way.
   static List<StatefulShellBranch> build({
     required List<RouteBase> financeRoutes,
     required Widget Function(BuildContext context, GoRouterState state) homeBuilder,
     required Widget Function(BuildContext context, GoRouterState state) settingsBuilder,
+    required Widget Function(BuildContext context, GoRouterState state) tasksBuilder,
   }) =>
       [
         StatefulShellBranch(
@@ -78,6 +89,15 @@ abstract final class ShellBranches {
           ],
         ),
         StatefulShellBranch(routes: financeRoutes),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: tasksPath,
+              name: tasksName,
+              builder: tasksBuilder,
+            ),
+          ],
+        ),
         StatefulShellBranch(
           routes: [
             GoRoute(

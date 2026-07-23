@@ -245,7 +245,7 @@ void main() {
   // (~500-700ms, varying by run); polling in 100ms steps up to 2s is
   // deterministic and stays well under the SnackBar's own ~4s auto-dismiss
   // timer, so it never accidentally settles that too.
-  Future<void> _dragAndWaitForSnackBar(WidgetTester tester) async {
+  Future<void> dragAndWaitForSnackBar(WidgetTester tester) async {
     await tester.drag(find.byType(Dismissible), const Offset(-500, 0));
     for (var i = 0; i < 20; i++) {
       await tester.pump(const Duration(milliseconds: 100));
@@ -281,7 +281,7 @@ void main() {
       // Bounded pumps only — pumpAndSettle would run the SnackBar's own
       // auto-dismiss timer to completion before returning, which is exactly
       // the behavior these tests need to observe mid-flight.
-      await _dragAndWaitForSnackBar(tester);
+      await dragAndWaitForSnackBar(tester);
 
       expect(find.text('Transaction deleted'), findsOneWidget);
       expect(find.text('UNDO'), findsOneWidget);
@@ -300,7 +300,7 @@ void main() {
       await tester.pumpWidget(harness.buildPage());
       await tester.pumpAndSettle();
 
-      await _dragAndWaitForSnackBar(tester);
+      await dragAndWaitForSnackBar(tester);
       expect(find.text('No transactions yet'), findsNothing);
       // The row itself is hidden (a Dismissible commits its own removal),
       // but the underlying data is untouched.
@@ -332,7 +332,7 @@ void main() {
       await tester.pumpWidget(harness.buildPage());
       await tester.pumpAndSettle();
 
-      await _dragAndWaitForSnackBar(tester);
+      await dragAndWaitForSnackBar(tester);
       expect(harness.viewModel.state.dataOrNull, hasLength(1));
 
       // The SnackBar's real ~4s auto-dismiss Timer does not reliably fire

@@ -1,7 +1,9 @@
 import 'package:feature_finance/finance.dart';
+import 'package:feature_tasks/tasks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_os/app/demo/demo_mode_controller.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
+import 'package:personal_os/app/demo/switchable_task_storage.dart';
 
 const _ws = 'ws-demo-test';
 
@@ -24,22 +26,34 @@ Future<int> _transactionCount(IFinanceDatabaseExecutor executor) async {
 final class _Harness {
   _Harness()
       : realExecutor = InMemoryFinanceDatabaseExecutor(),
-        realRunner = InMemoryFinanceTransactionRunner(InMemoryFinanceDatabaseExecutor()) {
+        realRunner = InMemoryFinanceTransactionRunner(InMemoryFinanceDatabaseExecutor()),
+        realTaskExecutor = InMemoryTaskDatabaseExecutor(),
+        realTaskRunner = InMemoryTaskTransactionRunner(InMemoryTaskDatabaseExecutor()) {
     executor = SwitchableFinanceDatabaseExecutor(realExecutor);
     runner = SwitchableFinanceTransactionRunner(realRunner);
+    taskExecutor = SwitchableTaskDatabaseExecutor(realTaskExecutor);
+    taskRunner = SwitchableTaskTransactionRunner(realTaskRunner);
     controller = DemoModeController(
-      executor: executor,
-      runner: runner,
-      realExecutor: realExecutor,
-      realRunner: realRunner,
+      financeExecutor: executor,
+      financeRunner: runner,
+      realFinanceExecutor: realExecutor,
+      realFinanceRunner: realRunner,
+      taskExecutor: taskExecutor,
+      taskRunner: taskRunner,
+      realTaskExecutor: realTaskExecutor,
+      realTaskRunner: realTaskRunner,
       workspaceId: _ws,
     );
   }
 
   final InMemoryFinanceDatabaseExecutor realExecutor;
   final InMemoryFinanceTransactionRunner realRunner;
+  final InMemoryTaskDatabaseExecutor realTaskExecutor;
+  final InMemoryTaskTransactionRunner realTaskRunner;
   late final SwitchableFinanceDatabaseExecutor executor;
   late final SwitchableFinanceTransactionRunner runner;
+  late final SwitchableTaskDatabaseExecutor taskExecutor;
+  late final SwitchableTaskTransactionRunner taskRunner;
   late final DemoModeController controller;
 }
 

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:application/application.dart';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_sample/sample.dart';
+import 'package:feature_tasks/tasks.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:platform_core/config/app_config.dart';
 import 'package:platform_core/di/i_service_locator.dart';
@@ -10,9 +11,11 @@ import 'package:platform_core/logging/i_logger.dart';
 import 'package:platform_runtime/bootstrap/runtime_bootstrap.dart';
 import 'package:personal_os/app/bootstrap/app_module.dart';
 import 'package:personal_os/app/bootstrap/finance_storage_module.dart';
+import 'package:personal_os/app/bootstrap/tasks_storage_module.dart';
 import 'package:personal_os/app/demo/demo_mode_controller.dart';
 import 'package:personal_os/app/demo/demo_module.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
+import 'package:personal_os/app/demo/switchable_task_storage.dart';
 import 'package:personal_os/app/onboarding/onboarding_module.dart';
 import 'package:personal_os/app/onboarding/onboarding_status_store.dart';
 
@@ -36,6 +39,10 @@ import 'package:personal_os/app/onboarding/onboarding_status_store.dart';
 ///                          domain services, specifications, use cases,
 ///                          ViewModels, routes, Dashboard/Accounts/
 ///                          Transactions/Categories pages
+/// TasksStorageModule     — ITaskDatabaseExecutor, ITaskTransactionRunner
+///                          (mirrors FinanceStorageModule for Tasks)
+/// TasksModule            — persistence, use cases, ViewModels, routes,
+///                          the Tasks list page (mirrors FinanceModule)
 /// SampleModule           — SampleService, route /sample, SampleStartupStep
 /// ```
 ///
@@ -98,35 +105,48 @@ final class AppBootstrap {
 
   /// Initialises the runtime and returns a fully booted [AppBootstrap].
   ///
-  /// [financeStorageFile], when supplied, is used as the Finance
-  /// persistence file instead of resolving one via `path_provider` — tests
-  /// pass a temporary file here so they never touch `path_provider`'s
-  /// platform channel. [onboardingStatusFile] is the equivalent override for
-  /// [OnboardingStatusStore].
+  /// [financeStorageFile]/[tasksStorageFile], when supplied, are used as the
+  /// Finance/Tasks persistence files instead of resolving them via
+  /// `path_provider` — tests pass temporary files here so they never touch
+  /// `path_provider`'s platform channel. [onboardingStatusFile] is the
+  /// equivalent override for [OnboardingStatusStore].
   ///
   /// Throws [RuntimeException] (from `platform_runtime`) if any module fails
   /// to register, initialise, or start.
   static Future<AppBootstrap> boot({
     File? financeStorageFile,
+    File? tasksStorageFile,
     File? onboardingStatusFile,
   }) async {
     final financeExecutor = await FileBackedFinanceDatabaseExecutor.open(
       financeStorageFile ?? await _defaultFinanceStorageFile(),
     );
-    final realRunner = FileBackedFinanceTransactionRunner(financeExecutor);
+    final realFinanceRunner = FileBackedFinanceTransactionRunner(financeExecutor);
 
-    // The switchable pair is what FinanceStorageModule actually binds —
-    // every Finance repository resolves these two instances for the app's
-    // lifetime. DemoModeController swaps their internal delegate between
-    // this real (file-backed) pair and a fresh in-memory demo pair; nothing
-    // downstream needs to know a swap ever happens (Milestone 6 Part A).
-    final switchableExecutor = SwitchableFinanceDatabaseExecutor(financeExecutor);
-    final switchableRunner = SwitchableFinanceTransactionRunner(realRunner);
+    final taskExecutor = await FileBackedTaskDatabaseExecutor.open(
+      tasksStorageFile ?? await _defaultTasksStorageFile(),
+    );
+    final realTaskRunner = FileBackedTaskTransactionRunner(taskExecutor);
+
+    // The switchable pairs are what FinanceStorageModule/TasksStorageModule
+    // actually bind — every Finance/Tasks repository resolves these
+    // instances for the app's lifetime. DemoModeController swaps each pair's
+    // internal delegate between its real (file-backed) executor and a fresh
+    // in-memory demo one; nothing downstream needs to know a swap ever
+    // happens (Milestone 6 Part A; extended to Tasks in Milestone 7).
+    final switchableFinanceExecutor = SwitchableFinanceDatabaseExecutor(financeExecutor);
+    final switchableFinanceRunner = SwitchableFinanceTransactionRunner(realFinanceRunner);
+    final switchableTaskExecutor = SwitchableTaskDatabaseExecutor(taskExecutor);
+    final switchableTaskRunner = SwitchableTaskTransactionRunner(realTaskRunner);
     final demoModeController = DemoModeController(
-      executor: switchableExecutor,
-      runner: switchableRunner,
-      realExecutor: financeExecutor,
-      realRunner: realRunner,
+      financeExecutor: switchableFinanceExecutor,
+      financeRunner: switchableFinanceRunner,
+      realFinanceExecutor: financeExecutor,
+      realFinanceRunner: realFinanceRunner,
+      taskExecutor: switchableTaskExecutor,
+      taskRunner: switchableTaskRunner,
+      realTaskExecutor: taskExecutor,
+      realTaskRunner: realTaskRunner,
       workspaceId: WorkspaceContext.defaultWorkspaceId,
     );
 
@@ -139,10 +159,15 @@ final class AppBootstrap {
       ..addModule(const AppModule())
       ..addModule(ApplicationModule())                          // registers core application singletons
       ..addModule(FinanceStorageModule(                          // binds Finance's persistence
-        executor: switchableExecutor,
-        runner: switchableRunner,
+        executor: switchableFinanceExecutor,
+        runner: switchableFinanceRunner,
       ))
       ..addModule(const FinanceModule())                        // installs the Finance feature
+      ..addModule(TasksStorageModule(                            // binds Tasks' persistence
+        executor: switchableTaskExecutor,
+        runner: switchableTaskRunner,
+      ))
+      ..addModule(const TasksModule())                          // installs the Tasks feature
       ..addModule(DemoModule(controller: demoModeController))    // Demo Mode management (Milestone 6)
       ..addModule(OnboardingModule(store: onboardingStore))      // first-run status (Milestone 6)
       ..addModule(const SampleModule());                        // validates Feature Framework
@@ -183,6 +208,12 @@ final class AppBootstrap {
   static Future<File> _defaultFinanceStorageFile() async {
     final directory = await getApplicationDocumentsDirectory();
     return File('${directory.path}/finance_data.json');
+  }
+
+  /// The production Tasks storage file: `<app documents dir>/tasks_data.json`.
+  static Future<File> _defaultTasksStorageFile() async {
+    final directory = await getApplicationDocumentsDirectory();
+    return File('${directory.path}/tasks_data.json');
   }
 
   /// The production onboarding status file: `<app documents dir>/onboarding_status.json`.
