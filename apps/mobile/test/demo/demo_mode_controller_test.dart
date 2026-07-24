@@ -1,5 +1,6 @@
 import 'package:feature_assets/assets.dart';
 import 'package:feature_calendar/calendar.dart';
+import 'package:feature_documents/documents.dart';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_os/app/demo/demo_mode_controller.dart';
 import 'package:personal_os/app/demo/switchable_asset_storage.dart';
 import 'package:personal_os/app/demo/switchable_calendar_storage.dart';
+import 'package:personal_os/app/demo/switchable_document_storage.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
 import 'package:personal_os/app/demo/switchable_goal_storage.dart';
 import 'package:personal_os/app/demo/switchable_habit_storage.dart';
@@ -48,7 +50,9 @@ final class _Harness {
         realCalendarExecutor = InMemoryEventDatabaseExecutor(),
         realCalendarRunner = InMemoryEventTransactionRunner(InMemoryEventDatabaseExecutor()),
         realAssetExecutor = InMemoryAssetDatabaseExecutor(),
-        realAssetRunner = InMemoryAssetTransactionRunner(InMemoryAssetDatabaseExecutor()) {
+        realAssetRunner = InMemoryAssetTransactionRunner(InMemoryAssetDatabaseExecutor()),
+        realDocumentExecutor = InMemoryDocumentDatabaseExecutor(),
+        realDocumentRunner = InMemoryDocumentTransactionRunner(InMemoryDocumentDatabaseExecutor()) {
     executor = SwitchableFinanceDatabaseExecutor(realExecutor);
     runner = SwitchableFinanceTransactionRunner(realRunner);
     taskExecutor = SwitchableTaskDatabaseExecutor(realTaskExecutor);
@@ -63,6 +67,8 @@ final class _Harness {
     calendarRunner = SwitchableEventTransactionRunner(realCalendarRunner);
     assetExecutor = SwitchableAssetDatabaseExecutor(realAssetExecutor);
     assetRunner = SwitchableAssetTransactionRunner(realAssetRunner);
+    documentExecutor = SwitchableDocumentDatabaseExecutor(realDocumentExecutor);
+    documentRunner = SwitchableDocumentTransactionRunner(realDocumentRunner);
     controller = DemoModeController(
       financeExecutor: executor,
       financeRunner: runner,
@@ -92,6 +98,10 @@ final class _Harness {
       assetRunner: assetRunner,
       realAssetExecutor: realAssetExecutor,
       realAssetRunner: realAssetRunner,
+      documentExecutor: documentExecutor,
+      documentRunner: documentRunner,
+      realDocumentExecutor: realDocumentExecutor,
+      realDocumentRunner: realDocumentRunner,
       workspaceId: _ws,
     );
   }
@@ -110,6 +120,8 @@ final class _Harness {
   final InMemoryEventTransactionRunner realCalendarRunner;
   final InMemoryAssetDatabaseExecutor realAssetExecutor;
   final InMemoryAssetTransactionRunner realAssetRunner;
+  final InMemoryDocumentDatabaseExecutor realDocumentExecutor;
+  final InMemoryDocumentTransactionRunner realDocumentRunner;
   late final SwitchableFinanceDatabaseExecutor executor;
   late final SwitchableFinanceTransactionRunner runner;
   late final SwitchableTaskDatabaseExecutor taskExecutor;
@@ -124,6 +136,8 @@ final class _Harness {
   late final SwitchableEventTransactionRunner calendarRunner;
   late final SwitchableAssetDatabaseExecutor assetExecutor;
   late final SwitchableAssetTransactionRunner assetRunner;
+  late final SwitchableDocumentDatabaseExecutor documentExecutor;
+  late final SwitchableDocumentTransactionRunner documentRunner;
   late final DemoModeController controller;
 }
 

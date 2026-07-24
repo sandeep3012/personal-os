@@ -12,6 +12,7 @@ dependencies:
   design_system: any
   feature_assets: any
   feature_calendar: any
+  feature_documents: any
   feature_finance: any
   feature_goals: any
   feature_habits: any

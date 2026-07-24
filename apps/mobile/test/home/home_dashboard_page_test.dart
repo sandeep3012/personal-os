@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:feature_assets/assets.dart';
 import 'package:feature_calendar/calendar.dart';
+import 'package:feature_documents/documents.dart';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
@@ -61,6 +62,11 @@ File _tempAssetsFile() => File(
       '/assets_data.json',
     );
 
+File _tempDocumentsFile() => File(
+      '${Directory.systemTemp.createTempSync('home_dashboard_documents_test_').path}'
+      '/documents_data.json',
+    );
+
 File _tempOnboardingFile() => File(
       '${Directory.systemTemp.createTempSync('home_dashboard_onboarding_test_').path}'
       '/onboarding_status.json',
@@ -74,6 +80,7 @@ Future<AppBootstrap> _boot() => AppBootstrap.boot(
       notesStorageFile: _tempNotesFile(),
       calendarStorageFile: _tempCalendarFile(),
       assetsStorageFile: _tempAssetsFile(),
+      documentsStorageFile: _tempDocumentsFile(),
       onboardingStatusFile: _tempOnboardingFile(),
     );
 
@@ -90,6 +97,7 @@ Widget _buildPage(
         notesViewModel: bootstrap.registry.get<NotesHomeViewModel>(),
         calendarViewModel: bootstrap.registry.get<CalendarHomeViewModel>(),
         assetsViewModel: bootstrap.registry.get<AssetsHomeViewModel>(),
+        documentsViewModel: bootstrap.registry.get<DocumentsHomeViewModel>(),
         onOpenFinance: onOpenFinance,
       ),
     );
@@ -172,17 +180,20 @@ void main() {
         expect(find.text('Assets'), findsOneWidget);
         expect(find.text('Active'), findsNWidgets(5));
 
-        for (final label in [
-          'Documents',
-          'AI Assistant',
-        ]) {
-          await tester.scrollUntilVisible(
-            find.text(label),
-            200,
-            scrollable: find.byType(Scrollable).first,
-          );
-          expect(find.text(label), findsOneWidget);
-        }
+        await tester.scrollUntilVisible(
+          find.text('Documents'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(find.text('Documents'), findsOneWidget);
+        expect(find.text('Active'), findsNWidgets(6));
+
+        await tester.scrollUntilVisible(
+          find.text('AI Assistant'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(find.text('AI Assistant'), findsOneWidget);
       });
     });
 
@@ -274,12 +285,6 @@ void main() {
 
         // Still renders every module placeholder at the wider (Expanded)
         // breakpoint — the layout adapts column count, not content.
-        await tester.scrollUntilVisible(
-          find.text('Documents'),
-          200,
-          scrollable: find.byType(Scrollable).first,
-        );
-        expect(find.text('Documents'), findsOneWidget);
         await tester.scrollUntilVisible(
           find.text('AI Assistant'),
           200,

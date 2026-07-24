@@ -2,6 +2,7 @@ import 'package:application/application.dart' show AsyncState;
 import 'package:design_system/design_system.dart';
 import 'package:feature_assets/assets.dart' show AssetsDashboardSummary, AssetsHomeViewModel;
 import 'package:feature_calendar/calendar.dart' show CalendarDashboardSummary, CalendarHomeViewModel;
+import 'package:feature_documents/documents.dart' show DocumentsDashboardSummary, DocumentsHomeViewModel;
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart' show GoalsDashboardSummary, GoalsHomeViewModel;
 import 'package:feature_habits/habits.dart' show HabitsDashboardSummary, HabitsHomeViewModel;
@@ -14,8 +15,8 @@ import 'package:flutter/material.dart';
 /// extended with Habits thereafter).
 ///
 /// Built entirely from `package:design_system` components. Finance, Tasks,
-/// Habits, Goals, Notes, Calendar, and Assets are the only modules with real
-/// data today; every other module (Documents, AI) renders a static,
+/// Habits, Goals, Notes, Calendar, Assets, and Documents are the only
+/// modules with real data today; every other module (AI) renders a static,
 /// visually polished placeholder [SummaryCard] — no fake repositories,
 /// ViewModels, or business logic are invented for them (Milestone 5 Part B
 /// scope).
@@ -34,6 +35,7 @@ final class HomeDashboardPage extends StatefulWidget {
     required this.notesViewModel,
     required this.calendarViewModel,
     required this.assetsViewModel,
+    required this.documentsViewModel,
     this.onOpenFinance,
     this.onOpenAccounts,
     this.onOpenTransactions,
@@ -43,6 +45,7 @@ final class HomeDashboardPage extends StatefulWidget {
     this.onOpenNotes,
     this.onOpenCalendar,
     this.onOpenAssets,
+    this.onOpenDocuments,
   });
 
   final FinanceHomeViewModel financeViewModel;
@@ -52,6 +55,7 @@ final class HomeDashboardPage extends StatefulWidget {
   final NotesHomeViewModel notesViewModel;
   final CalendarHomeViewModel calendarViewModel;
   final AssetsHomeViewModel assetsViewModel;
+  final DocumentsHomeViewModel documentsViewModel;
   final VoidCallback? onOpenFinance;
   final VoidCallback? onOpenAccounts;
   final VoidCallback? onOpenTransactions;
@@ -61,6 +65,7 @@ final class HomeDashboardPage extends StatefulWidget {
   final VoidCallback? onOpenNotes;
   final VoidCallback? onOpenCalendar;
   final VoidCallback? onOpenAssets;
+  final VoidCallback? onOpenDocuments;
 
   @override
   State<HomeDashboardPage> createState() => _HomeDashboardPageState();
@@ -77,6 +82,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
     widget.notesViewModel.load();
     widget.calendarViewModel.load();
     widget.assetsViewModel.load();
+    widget.documentsViewModel.load();
   }
 
   @override
@@ -99,6 +105,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
           widget.notesViewModel,
           widget.calendarViewModel,
           widget.assetsViewModel,
+          widget.documentsViewModel,
         ]),
         builder: (context, _) => RefreshIndicator(
           onRefresh: () => Future.wait([
@@ -109,6 +116,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
             widget.notesViewModel.refresh(),
             widget.calendarViewModel.refresh(),
             widget.assetsViewModel.refresh(),
+            widget.documentsViewModel.refresh(),
           ]),
           child: ListView(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
@@ -191,6 +199,17 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
                   ),
                 ),
               ),
+              const SizedBox(height: AppSpacing.md),
+              _entrance(
+                2,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: _DocumentsModuleCard(
+                    state: widget.documentsViewModel.state,
+                    onTap: widget.onOpenDocuments,
+                  ),
+                ),
+              ),
               const SizedBox(height: AppSpacing.lg),
               _entrance(
                 3,
@@ -220,6 +239,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
                   onOpenNotes: widget.onOpenNotes,
                   onOpenCalendar: widget.onOpenCalendar,
                   onOpenAssets: widget.onOpenAssets,
+                  onOpenDocuments: widget.onOpenDocuments,
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -752,6 +772,52 @@ class _AssetsCardBody extends StatelessWidget {
   }
 }
 
+class _DocumentsModuleCard extends StatelessWidget {
+  const _DocumentsModuleCard({required this.state, this.onTap});
+
+  final AsyncState<DocumentsDashboardSummary> state;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semanticColors = theme.extension<AppSemanticColors>();
+    final accent = semanticColors?.moduleAccent('documents') ?? theme.colorScheme.primary;
+
+    return ModuleCard<DocumentsDashboardSummary>(
+      icon: Icons.description_outlined,
+      accentColor: accent,
+      title: 'Documents',
+      state: state,
+      loadingHeight: 96,
+      onTap: onTap,
+      semanticLabel: 'Documents summary',
+      contentBuilder: (context, data) => _DocumentsCardBody(data: data),
+    );
+  }
+}
+
+class _DocumentsCardBody extends StatelessWidget {
+  const _DocumentsCardBody({required this.data});
+
+  final DocumentsDashboardSummary data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: StatCard(
+            icon: Icons.description_outlined,
+            label: 'Active',
+            value: data.activeCount.toDouble(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _MiniStat extends StatelessWidget {
   const _MiniStat({
     required this.icon,
@@ -870,6 +936,7 @@ class _QuickActionsSection extends StatelessWidget {
     this.onOpenNotes,
     this.onOpenCalendar,
     this.onOpenAssets,
+    this.onOpenDocuments,
   });
 
   final VoidCallback? onOpenFinance;
@@ -881,6 +948,7 @@ class _QuickActionsSection extends StatelessWidget {
   final VoidCallback? onOpenNotes;
   final VoidCallback? onOpenCalendar;
   final VoidCallback? onOpenAssets;
+  final VoidCallback? onOpenDocuments;
 
   @override
   Widget build(BuildContext context) {
@@ -948,6 +1016,12 @@ class _QuickActionsSection extends StatelessWidget {
                   label: 'Add Asset',
                   onTap: onOpenAssets!,
                 ),
+              if (onOpenDocuments != null)
+                QuickActionButton(
+                  icon: Icons.description_outlined,
+                  label: 'Add Document',
+                  onTap: onOpenDocuments!,
+                ),
             ],
           ),
         ),
@@ -973,12 +1047,6 @@ class _PlaceholderModuleGrid extends StatelessWidget {
         semanticColors?.moduleAccent(moduleId) ?? theme.colorScheme.primary;
 
     final cards = <Widget>[
-      SummaryCard(
-        icon: Icons.description_outlined,
-        accentColor: accentFor('documents'),
-        title: 'Documents',
-        body: const _ComingSoonBody(message: 'Document storage is coming soon'),
-      ),
       SummaryCard(
         icon: Icons.auto_awesome_outlined,
         accentColor: accentFor('ai'),

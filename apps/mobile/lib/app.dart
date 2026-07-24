@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:feature_assets/assets.dart';
 import 'package:feature_calendar/calendar.dart';
+import 'package:feature_documents/documents.dart';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
@@ -84,6 +85,7 @@ class _PersonalOsAppState extends State<PersonalOsApp>
       notesBuilder: _buildNotes,
       calendarBuilder: _buildCalendar,
       assetsBuilder: _buildAssets,
+      documentsBuilder: _buildDocuments,
       demoModeController: _demoModeController,
       financeRoutes: _buildFinanceRoutes(),
       otherTopLevelRoutes: _buildOtherTopLevelRoutes(),
@@ -106,6 +108,7 @@ class _PersonalOsAppState extends State<PersonalOsApp>
         notesViewModel: widget.bootstrap.registry.get<NotesHomeViewModel>(),
         calendarViewModel: widget.bootstrap.registry.get<CalendarHomeViewModel>(),
         assetsViewModel: widget.bootstrap.registry.get<AssetsHomeViewModel>(),
+        documentsViewModel: widget.bootstrap.registry.get<DocumentsHomeViewModel>(),
         onOpenFinance: () => context.goNamed(FinanceRoutes.root.name),
         onOpenAccounts: () => context.goNamed(FinanceRoutes.accounts.name),
         onOpenTransactions: () =>
@@ -116,6 +119,7 @@ class _PersonalOsAppState extends State<PersonalOsApp>
         onOpenNotes: () => context.goNamed(NotesRoutes.root.name),
         onOpenCalendar: () => context.goNamed(CalendarRoutes.root.name),
         onOpenAssets: () => context.goNamed(AssetsRoutes.root.name),
+        onOpenDocuments: () => context.goNamed(DocumentsRoutes.root.name),
       );
 
   /// Builds the Settings branch's landing screen — the real [SettingsPage]
@@ -152,6 +156,11 @@ class _PersonalOsAppState extends State<PersonalOsApp>
   /// mirroring how Calendar's routes are built.
   Widget _buildAssets(BuildContext context, GoRouterState state) =>
       AssetsPage(viewModel: widget.bootstrap.registry.get<AssetsViewModel>());
+
+  /// Builds the Documents branch's landing screen — the real [DocumentsPage],
+  /// mirroring how Assets' routes are built.
+  Widget _buildDocuments(BuildContext context, GoRouterState state) =>
+      DocumentsPage(viewModel: widget.bootstrap.registry.get<DocumentsViewModel>());
 
   /// Builds the first-run onboarding route (Milestone 6 Part B) — a
   /// top-level route outside the shell, exactly like [AppRouter.diagnosticsPath].

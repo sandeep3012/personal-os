@@ -1,5 +1,6 @@
 import 'package:feature_assets/assets.dart';
 import 'package:feature_calendar/calendar.dart';
+import 'package:feature_documents/documents.dart';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
@@ -10,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_os/app/demo/demo_mode_controller.dart';
 import 'package:personal_os/app/demo/switchable_asset_storage.dart';
 import 'package:personal_os/app/demo/switchable_calendar_storage.dart';
+import 'package:personal_os/app/demo/switchable_document_storage.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
 import 'package:personal_os/app/demo/switchable_goal_storage.dart';
 import 'package:personal_os/app/demo/switchable_habit_storage.dart';
@@ -34,6 +36,8 @@ DemoModeController _controller() {
   final realCalendarRunner = InMemoryEventTransactionRunner(realCalendarExecutor);
   final realAssetExecutor = InMemoryAssetDatabaseExecutor();
   final realAssetRunner = InMemoryAssetTransactionRunner(realAssetExecutor);
+  final realDocumentExecutor = InMemoryDocumentDatabaseExecutor();
+  final realDocumentRunner = InMemoryDocumentTransactionRunner(realDocumentExecutor);
   return DemoModeController(
     financeExecutor: SwitchableFinanceDatabaseExecutor(realExecutor),
     financeRunner: SwitchableFinanceTransactionRunner(realRunner),
@@ -63,6 +67,10 @@ DemoModeController _controller() {
     assetRunner: SwitchableAssetTransactionRunner(realAssetRunner),
     realAssetExecutor: realAssetExecutor,
     realAssetRunner: realAssetRunner,
+    documentExecutor: SwitchableDocumentDatabaseExecutor(realDocumentExecutor),
+    documentRunner: SwitchableDocumentTransactionRunner(realDocumentRunner),
+    realDocumentExecutor: realDocumentExecutor,
+    realDocumentRunner: realDocumentRunner,
     workspaceId: _ws,
   );
 }
