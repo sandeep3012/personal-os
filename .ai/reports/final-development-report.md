@@ -501,3 +501,236 @@ depth as Calendar's.
 - `DemoAssetSeedData` uses relative dates (`DateTime.now() - Duration(...)`) rather than
   fixed dates, mirroring `DemoCalendarSeedData`'s same deviation from Notes/Goals' fixed
   seed content.
+
+---
+
+# Documents Feature
+
+## Objective
+
+Add a complete "Documents" feature vertical (`features/documents`) mirroring
+`features/assets`/`features/calendar`/`features/notes` file-for-file, scoped to
+METADATA ONLY per the task's explicit instruction: title, type/category (free-text,
+mirroring Assets' `category`), a `referenceLocation` string (a URI/file-path pointer,
+not actual file bytes), tags (list of strings, mirroring Notes), and an active/archived
+status (mirroring Notes'/Goals' two-state pattern, not Assets' three-state
+active/disposed/archived — a Document has no "disposed" concept). Real file
+upload/blob storage is explicitly out of scope for this pass (see Technical debt).
+
+## Files Added
+
+- `features/documents/lib/documents.dart` (public barrel)
+- `features/documents/lib/src/domain/` — `entities/document.dart`,
+  `value_objects/{document_id,document_page,document_query,document_status}.dart`,
+  `exceptions/documents_exception.dart`, `repositories/i_document_repository.dart`,
+  `documents/{document_created,document_updated,document_archived,document_deleted}_event.dart`
+- `features/documents/lib/src/data/` — `dao/document_dao.dart`,
+  `mappers/document_mapper.dart`, `models/{document_row,document_query_filter}.dart`,
+  `schema/documents_schema.dart`, `migrations/create_documents_table_migration.dart`,
+  `database/{i_document_database_executor,i_document_transaction_runner,
+  in_memory_document_database_executor,in_memory_document_transaction_runner,
+  file_backed_document_database_executor,file_backed_document_transaction_runner}.dart`,
+  `repositories/document_repository.dart`
+- `features/documents/lib/src/application/use_cases/` — create, update, archive,
+  delete, get, get-all, search (7 use cases; no "dispose" use case, since
+  `DocumentStatus` has no disposed state)
+- `features/documents/lib/src/presentation/` — `viewmodels/{documents_view_model,
+  documents_home_view_model}.dart`, `pages/documents_page.dart`,
+  `routes/documents_routes.dart`
+- `features/documents/lib/src/di/documents_module.dart`
+- `features/documents/pubspec.yaml`
+- `features/documents/test/**` — full mirrored test suite: domain (entity, events,
+  status value object), data (fake executor, DAO, mapper, migration, row, repository),
+  application (one test file per use case), DI (`documents_module_test.dart` against a
+  real `ServiceRegistry`), presentation (both ViewModels + page widget tests)
+- `apps/mobile/lib/app/bootstrap/documents_storage_module.dart` (`DocumentsStorageModule`)
+- `apps/mobile/lib/app/demo/switchable_document_storage.dart`
+  (`SwitchableDocumentDatabaseExecutor`/`SwitchableDocumentTransactionRunner`)
+- `apps/mobile/lib/app/demo/demo_document_seed_data.dart` (`DemoDocumentSeedData` — 5
+  sample documents, one archived, raw `INSERT INTO documents (...)`)
+
+## Files Modified
+
+- `apps/mobile/pubspec.yaml` — added `feature_documents: any`
+- `apps/mobile/lib/app/bootstrap/app_bootstrap.dart` — opens the file-backed Documents
+  executor/runner, builds the switchable pair, threads it into `DemoModeController`,
+  registers `DocumentsStorageModule` + `DocumentsModule` (after Assets, before
+  `DemoModule`), adds `_defaultDocumentsStorageFile()`
+- `apps/mobile/lib/app/demo/demo_mode_controller.dart` — new
+  `documentExecutor`/`documentRunner`/`realDocumentExecutor`/`realDocumentRunner`
+  constructor params + fields; `enableDemoMode()`/`exitDemoMode()` swap the Documents
+  pair alongside every other feature's
+- `apps/mobile/lib/app/shell/shell_branches.dart` — `documentsPath`/`documentsName`
+  constants, a `ShellDestination` (between Assets and Settings), `documentsBuilder`
+  param, and its `StatefulShellBranch`
+- `apps/mobile/lib/app/navigation/app_router.dart` — `documentsBuilder` param threaded
+  into `ShellBranches.build`
+- `apps/mobile/lib/app.dart` — imports `feature_documents`, passes `documentsBuilder:
+  _buildDocuments`, resolves `DocumentsHomeViewModel`/`onOpenDocuments` for
+  `HomeDashboardPage`, adds `_buildDocuments`
+- `apps/mobile/lib/app/home/home_dashboard_page.dart` — added `documentsViewModel`/
+  `onOpenDocuments` to `HomeDashboardPage`, wired into `initState`/listenable
+  merge/refresh, added a real `_DocumentsModuleCard`/`_DocumentsCardBody` (using the
+  pre-existing `'documents'` theme accent key), added an "Add Document" quick action,
+  and **removed** the old static placeholder `SummaryCard` for Documents from
+  `_PlaceholderModuleGrid` (only the AI Assistant placeholder remains there now)
+- `apps/mobile/test/navigation/app_router_test.dart`,
+  `apps/mobile/test/settings/settings_page_test.dart`,
+  `apps/mobile/test/demo/demo_mode_controller_test.dart`,
+  `apps/mobile/test/bootstrap/app_bootstrap_test.dart`,
+  `apps/mobile/test/home/home_dashboard_page_test.dart` — all updated with the new
+  Documents executor/runner/ViewModel wiring and, for `app_bootstrap_test.dart`, a new
+  "Documents persistence binding" test group mirroring "Assets persistence binding";
+  `home_dashboard_page_test.dart`'s loaded-state assertion now expects a real
+  Documents `ModuleCard` (title + "Active" stat) instead of a static placeholder card
+
+## Domain
+
+`Document` entity: `title` (≤200 chars, non-empty), `type` (≤100 chars, non-empty,
+free-text — mirrors Finance's/Assets' plain-string category pattern per
+DOC-031_Finance_Domain_Design.md), `referenceLocation` (≤2000 chars, defaults to `''`
+— a URI/path pointer only), `notes` (≤20,000 chars), `tags` (normalized: trimmed,
+deduped, empties dropped — mirrors `Note.tags`), `status` (`DocumentStatus.active` /
+`.archived`, two-state, mirrors `NoteStatus` — no "disposed" state since Documents are
+metadata records, not owned items that can be sold/written off). `transitionTo`
+enforces the approved table (`active -> archived` only); `copyWith` never changes
+status. `DocumentsException` is the single domain exception type. Four domain events
+declared (`DocumentCreatedEvent`, `DocumentUpdatedEvent`, `DocumentArchivedEvent`,
+`DocumentDeletedEvent`) for parity — not yet dispatched anywhere, mirroring the same
+pre-existing gap in every other feature.
+
+## Data
+
+`DocumentDao`/`DocumentMapper`/`DocumentRow`/`DocumentsSchema`/
+`CreateDocumentsTableMigration` mirror Notes'/Assets' exact file layout.
+`DocumentRow.tags` is a pipe-delimited `TEXT` column (`|tag1|tag2|`), identical
+encoding to `NoteRow.tags`. In-memory and file-backed executor/transaction-runner
+pairs are the same hand-rolled JSON-file engine every other feature uses (no real SQL
+engine wired in yet). `DocumentRepository` translates all DAO/mapper failures into
+`DocumentsException` and contains zero `isDemoMode` branching.
+
+## Application
+
+Seven use cases, orchestration only: `CreateDocumentUseCase`, `UpdateDocumentUseCase`,
+`ArchiveDocumentUseCase`, `DeleteDocumentUseCase` (soft-delete), `GetDocumentUseCase`,
+`GetDocumentsUseCase`, `SearchDocumentsUseCase`. No "dispose" use case — intentional,
+since `DocumentStatus` has no disposed state.
+
+## Presentation
+
+`DocumentsViewModel` (full list page — create/update/archive/delete, `AsyncState`,
+constructor-injected use cases, `dispose()` unregisters its `WorkspaceContext`
+listener) and `DocumentsHomeViewModel` (Home Dashboard summary — `activeCount` only;
+unlike `AssetsDashboardSummary` there is no monetary `totalValue` since Documents
+carry no `value` field). `DocumentsPage` reuses `AppStateSwitcher`, the
+design-system's pre-existing `DocumentTile` (a generic icon/title/subtitle row already
+used the same way by other features, not forked into a Documents-specific widget —
+per the task's explicit note that this widget isn't necessarily Documents-owned), and
+`showAppInputSurface` for the create/edit form (Title/Type/Reference
+location/Tags/Notes fields, comma-separated tags parsing, Archive action in the edit
+dialog). Zero business logic in the page or either ViewModel.
+
+## Navigation
+
+`DocumentsRoutes.root` (`/documents`) registered by `DocumentsModule.registerRoutes`;
+threaded through `ShellBranches` (new branch between Assets and Settings, with a
+`description`/`description_outlined` icon pair) → `AppRouter.create` →
+`app.dart`'s `_buildDocuments`/`onOpenDocuments`.
+
+## Home Dashboard
+
+`_DocumentsModuleCard`/`_DocumentsCardBody` added via the existing `ModuleCard`
+extension mechanism, positioned after Assets and before the Recent Transactions
+section. Uses the pre-existing `'documents'` theme color key already present in
+`packages/design_system/lib/src/theme/app_theme_builder.dart` (line 217) — no new
+theme key added, per instructions. The old static placeholder `SummaryCard` for
+Documents was removed from `_PlaceholderModuleGrid`, which now shows only the AI
+Assistant placeholder.
+
+## Demo Mode
+
+`DocumentsStorageModule` (binds `IDocumentDatabaseExecutor`/
+`IDocumentTransactionRunner`, not self-registered by `DocumentsModule`),
+`SwitchableDocumentDatabaseExecutor`/`SwitchableDocumentTransactionRunner` (mirror
+`SwitchableAssetDatabaseExecutor`/`SwitchableAssetTransactionRunner` exactly), and
+`DemoDocumentSeedData` (5 sample documents — lease agreement, passport, car insurance,
+laptop warranty, and one archived old rental agreement — via raw `INSERT INTO
+documents (...)`, since `feature_documents`'s DAO/schema classes aren't part of its
+public barrel, same seam every other `Demo*SeedData` class uses). Wired into
+`DemoModeController.enableDemoMode()`/`exitDemoMode()` and `AppBootstrap.boot()`.
+Zero `isDemoMode` branching in `DocumentRepository`/`DocumentDao`/any use case.
+
+## Static verification performed
+
+- Read every file in `features/documents/lib` and `features/documents/test` after the
+  copy-and-rewrite pass; grepped for stray `Asset`/`asset` identifiers (only legitimate
+  doc-comment cross-references like "mirrors `Asset.copyWith`" remained), for
+  `Dispose`/`disposed` residue (none — the dispose use case, event, and status value
+  were deliberately deleted, not renamed), and for any `...CreatedAsset`/
+  `...UpdatedAsset`-style fused identifiers from a blind find-replace (none found —
+  every `DocumentCreatedEvent`/`DocumentUpdatedEvent`/`DocumentArchivedEvent`/
+  `DocumentDeletedEvent` class name reads correctly).
+- Verified `Document`'s constructor validation (`title`, `type`, `referenceLocation`,
+  `notes`, `tags` normalization) and `DocumentStatus`'s two-state transition table
+  match what `document_test.dart`/`document_status_test.dart` assert, and that
+  `DocumentMapper.toEntity`/`toRow` round-trip every field including `tags`.
+- Verified `DocumentsSchema.documentColumns` (10 columns) matches
+  `DocumentRow.toMap()`/`fromMap()` key-for-key, matches
+  `CreateDocumentsTableMigration`'s `CREATE TABLE` column list, and matches
+  `DemoDocumentSeedData`'s raw `INSERT INTO documents (...)` column list and
+  placeholder count.
+- Verified `DocumentsModule.registerServices` registers `DocumentMapper`,
+  `DocumentDao`, `IDocumentRepository`, all 7 use cases, and both ViewModels — no
+  duplicate registrations, and `IDocumentDatabaseExecutor`/`IDocumentTransactionRunner`
+  are deliberately *not* self-registered (bound instead by `DocumentsStorageModule`,
+  matching `AssetsStorageModule`/`CalendarStorageModule`/`NotesStorageModule`).
+- Verified `DocumentsRoutes.root` is registered in `DocumentsModule.registerRoutes` and
+  threaded consistently through `ShellBranches.build` → `AppRouter.create` →
+  `app.dart` (`_buildDocuments`, `onOpenDocuments`), and that
+  `ShellBranches.destinations` ordering matches the branch list ordering (Documents
+  between Assets and Settings in both).
+- Verified `features/documents/lib/documents.dart` barrel exports every symbol the app
+  layer imports (`DocumentsModule`, `Document`/`DocumentStatus`/`DocumentId`/
+  `DocumentPage`/`DocumentQuery`, `DocumentsPage`, `DocumentsRoutes`, both ViewModels +
+  `DocumentsDashboardSummary`, the executor/runner pair).
+- Confirmed zero `isDemoMode` branching inside `DocumentRepository`, `DocumentDao`, or
+  any Documents use case.
+- Cross-checked every constructor call site touched by this session's app-layer edits:
+  `DemoModeController`'s four new Documents params against all four call sites
+  (`app_bootstrap.dart`, `app_router_test.dart`, `settings_page_test.dart`,
+  `demo_mode_controller_test.dart`), `AppBootstrap.boot`'s new `documentsStorageFile`
+  param against its three call sites (`app_bootstrap.dart` production default,
+  `app_bootstrap_test.dart`, `home_dashboard_page_test.dart`), and
+  `HomeDashboardPage`'s new required `documentsViewModel` param against its two call
+  sites (`app.dart`, `home_dashboard_page_test.dart`).
+- Verified `DocumentTile` (design_system) is used with the same constructor signature
+  (`icon`, `name`, `categoryLabel`, `onTap`) as other features already using it —
+  reused verbatim, not forked.
+- Checked `git status` before committing — no `.dart_tool`, golden-test `failures/`, or
+  other stray generated files were staged; only intended source/test files.
+- Did not run `flutter analyze`/`flutter test`/`flutter pub get`/`melos`/any build or
+  test command, per instructions — verification above is static/manual only.
+
+## Commit hash
+
+`cd2ddb0` — `feat(documents): complete Documents feature`
+
+## Technical debt (carried over / introduced)
+
+- **Metadata-only scope decision**: per the task's explicit instruction, Documents
+  stores only a `referenceLocation` string pointer (URI/path) — no actual file
+  bytes/blobs are ever read, written, or stored anywhere in this feature. Finance's
+  own "Attachments" concept (DOC-031) is likewise metadata-oriented rather than a real
+  blob-storage mechanism, so this mirrors the existing architecture rather than
+  diverging from it. Real file upload/blob storage (picking a file, persisting its
+  bytes, rendering a preview) is explicitly out of scope for this pass and would
+  require extending the frozen Storage architecture — flagged here for a future
+  session, not attempted.
+- Same schema-as-code-only migration status as every other feature
+  (`CreateDocumentsTableMigration` not wired to a runtime migration runner).
+- Domain events (`DocumentCreatedEvent` etc.) are declared for parity with
+  Notes/Assets/Calendar but are not actually raised/dispatched anywhere — mirrors the
+  same pre-existing gap in every other feature, not a new one introduced here.
+- `DemoDocumentSeedData` uses fixed sample content (no relative dates, since Documents
+  has no date field), mirroring `DemoNoteSeedData`'s fixed-content style rather than
+  `DemoAssetSeedData`'s/`DemoCalendarSeedData`'s relative-date style.
