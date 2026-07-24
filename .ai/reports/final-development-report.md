@@ -734,3 +734,130 @@ Zero `isDemoMode` branching in `DocumentRepository`/`DocumentDao`/any use case.
 - `DemoDocumentSeedData` uses fixed sample content (no relative dates, since Documents
   has no date field), mirroring `DemoNoteSeedData`'s fixed-content style rather than
   `DemoAssetSeedData`'s/`DemoCalendarSeedData`'s relative-date style.
+
+---
+
+# AI Assistant — Architecture-Approval Stop (Not Implemented)
+
+## Objective
+
+Evaluate whether "AI Assistant" can be implemented as a same-architecture feature
+vertical (mirroring Goals/Notes/Calendar/Assets/Documents), per the roadmap.
+
+## Decision: Stopped — requires human architectural approval, not implemented
+
+## Reasoning
+
+`docs/architecture/DOC-014_AI_Architecture.md` defines the intended AI architecture:
+an **AI Gateway** Platform Service, with a Prompt Manager, Context Builder, AI Memory,
+Provider Adapter, and Insight Engine, through which all Feature Packages must route AI
+requests ("Never call AI providers directly"). The doc's own status is **Draft (Review
+1)** — it is a design intent, not a shipped capability.
+
+A repository-wide search (`grep -ril "AIGateway\|AI Gateway\|ProviderAdapter\|InsightEngine"`
+across `packages/` and `apps/`) found **zero matches**. None of the following exist
+anywhere in the frozen Platform/Application layers:
+
+- An AI Gateway service or abstraction
+- A Provider Adapter for any LLM provider (OpenAI/Anthropic/Google/local)
+- A Context Builder, Prompt Manager, or AI Memory service
+- Any registered DI service, route, or module related to AI
+
+This is fundamentally different from every other feature in this batch. Goals, Notes,
+Calendar, Assets, and Documents are all thin verticals built entirely on top of
+**existing, frozen** Platform/Storage/Application capability (SQLite storage,
+repository/DAO patterns, DI container, navigation, Home Dashboard, Demo Mode) — no
+Platform Service needed to be invented to build them.
+
+AI Assistant has no such foundation to build on. Implementing it would require first
+building net-new Platform Service infrastructure (an AI Gateway, a provider
+abstraction, external network calls to a third-party LLM API, API key/credential
+handling, a memory/context store) — i.e. **extending the frozen architecture**, not
+fitting a feature into it. The task's own instructions are explicit that the
+architecture is frozen and features must fit the existing architecture, not the other
+way around; they also explicitly forbid building a fake/stub AI integration to paper
+over this gap.
+
+## What would be required before this can proceed
+
+1. An architectural decision (ADR) authorizing a new **AI Gateway Platform Service**
+   in `packages/application` (or a new dedicated package), including:
+   - Which provider(s) to integrate first, and how credentials/API keys are
+     configured and stored (this also has security implications — API keys must not
+     be committed or hardcoded).
+   - The Provider Adapter interface shape, so it's provider-agnostic per DOC-014's
+     "AI providers are replaceable" rule.
+   - How outbound network calls to a third-party AI provider fit the app's
+     offline-first principle (DOC-014 explicitly lists "AI enhances, never replaces
+     user control" and "Offline-first architecture" as principles — the interaction
+     between those and any online-only provider needs to be resolved).
+2. Once that Platform Service exists and is itself frozen/stable, an "AI Assistant"
+   *feature* could then be built as a thin vertical on top of it, the same way Goals
+   etc. were built on top of Storage/DI/Navigation.
+
+## Files Added / Modified
+
+None. No code was written for this item.
+
+## Recommendation
+
+Treat "AI Assistant" as a separate, human-approved architecture initiative (starting
+with an ADR for the AI Gateway Platform Service) rather than the seventh item in this
+feature-vertical batch. The other five roadmap features (Goals, Notes, Calendar,
+Assets, Documents) are complete and required no such approval because they fit the
+existing frozen architecture without extending it.
+  `DemoAssetSeedData`'s/`DemoCalendarSeedData`'s relative-date style.
+
+---
+
+# Session Summary — Roadmap Batch (Goals → Notes → Calendar → Assets → Documents → AI Assistant)
+
+## Features completed
+
+1. Goals — `1cb4bbd`, `a77140e`
+2. Notes — `9c3fb9c` (initial WIP), `e6cea22` (completed with full test suite + static review)
+3. Calendar — `ee50b3d`, `b2481d4`
+4. Assets — `0c41f99`, `a128748`
+5. Documents — `cd2ddb0`, `5f5317d`
+
+## Commits created (this batch, chronological)
+
+- `1cb4bbd` feat(goals): complete Goals feature
+- `a77140e` chore: remove golden-test failure artifacts from Goals commit
+- `9c3fb9c` wip(notes): partial Notes feature implementation
+- `e6cea22` feat(notes): complete Notes feature
+- `ee50b3d` feat(calendar): complete Calendar feature
+- `b2481d4` docs: update final development report with Calendar
+- `0c41f99` feat(assets): complete Assets feature
+- `a128748` docs: update final development report with Assets
+- `cd2ddb0` feat(documents): complete Documents feature
+- `5f5317d` docs: update final development report with Documents
+
+## Remaining roadmap
+
+- AI Assistant — stopped for required architectural approval (AI Gateway Platform
+  Service does not exist yet; see section above). Not implemented, by design.
+
+## Verification method for this batch
+
+Per explicit instruction partway through this batch, no local build/analyze/test
+commands (`flutter analyze`, `flutter test`, `flutter pub get`, `melos *`, etc.) were
+executed for Notes, Calendar, Assets, or Documents. Each was instead verified through
+careful static code review: import resolution, constructor/DI wiring, route
+registration, barrel export completeness, and (for Assets/Documents specifically)
+a check for mechanical rename bugs after a find-replace pass revealed one
+(`AssetCreatedEvent` → `AssetCreatedAsset`) that was caught and fixed by hand in the
+Assets session. **The developer should run a full `flutter analyze` + `flutter test`
+pass locally before treating Notes/Calendar/Assets/Documents as production-verified**
+— Goals is the only feature in this batch that had real `flutter analyze`/`flutter
+test` executed against it (in an earlier session, before the no-build-commands
+constraint was introduced).
+
+## Blockers encountered
+
+- AI Assistant requires a new Platform Service (AI Gateway) that doesn't exist in the
+  frozen architecture — see dedicated section above. This blocks only that one
+  feature, not the rest of the roadmap.
+- No Flutter/Dart SDK build verification was performed for Notes/Calendar/Assets/
+  Documents per explicit instruction to defer all builds/tests to the developer's
+  local environment.
