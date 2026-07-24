@@ -3,6 +3,7 @@ import 'package:design_system/design_system.dart';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart' show GoalsDashboardSummary, GoalsHomeViewModel;
 import 'package:feature_habits/habits.dart' show HabitsDashboardSummary, HabitsHomeViewModel;
+import 'package:feature_notes/notes.dart' show NotesDashboardSummary, NotesHomeViewModel;
 import 'package:feature_tasks/tasks.dart' show TasksDashboardSummary, TasksHomeViewModel;
 import 'package:flutter/material.dart';
 
@@ -27,24 +28,28 @@ final class HomeDashboardPage extends StatefulWidget {
     required this.tasksViewModel,
     required this.habitsViewModel,
     required this.goalsViewModel,
+    required this.notesViewModel,
     this.onOpenFinance,
     this.onOpenAccounts,
     this.onOpenTransactions,
     this.onOpenTasks,
     this.onOpenHabits,
     this.onOpenGoals,
+    this.onOpenNotes,
   });
 
   final FinanceHomeViewModel financeViewModel;
   final TasksHomeViewModel tasksViewModel;
   final HabitsHomeViewModel habitsViewModel;
   final GoalsHomeViewModel goalsViewModel;
+  final NotesHomeViewModel notesViewModel;
   final VoidCallback? onOpenFinance;
   final VoidCallback? onOpenAccounts;
   final VoidCallback? onOpenTransactions;
   final VoidCallback? onOpenTasks;
   final VoidCallback? onOpenHabits;
   final VoidCallback? onOpenGoals;
+  final VoidCallback? onOpenNotes;
 
   @override
   State<HomeDashboardPage> createState() => _HomeDashboardPageState();
@@ -58,6 +63,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
     widget.tasksViewModel.load();
     widget.habitsViewModel.load();
     widget.goalsViewModel.load();
+    widget.notesViewModel.load();
   }
 
   @override
@@ -77,6 +83,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
           widget.tasksViewModel,
           widget.habitsViewModel,
           widget.goalsViewModel,
+          widget.notesViewModel,
         ]),
         builder: (context, _) => RefreshIndicator(
           onRefresh: () => Future.wait([
@@ -84,6 +91,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
             widget.tasksViewModel.refresh(),
             widget.habitsViewModel.refresh(),
             widget.goalsViewModel.refresh(),
+            widget.notesViewModel.refresh(),
           ]),
           child: ListView(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
@@ -133,6 +141,17 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
                   ),
                 ),
               ),
+              const SizedBox(height: AppSpacing.md),
+              _entrance(
+                2,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: _NotesModuleCard(
+                    state: widget.notesViewModel.state,
+                    onTap: widget.onOpenNotes,
+                  ),
+                ),
+              ),
               const SizedBox(height: AppSpacing.lg),
               _entrance(
                 3,
@@ -159,6 +178,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
                   onOpenTasks: widget.onOpenTasks,
                   onOpenHabits: widget.onOpenHabits,
                   onOpenGoals: widget.onOpenGoals,
+                  onOpenNotes: widget.onOpenNotes,
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -529,6 +549,60 @@ class _GoalsCardBody extends StatelessWidget {
   }
 }
 
+class _NotesModuleCard extends StatelessWidget {
+  const _NotesModuleCard({required this.state, this.onTap});
+
+  final AsyncState<NotesDashboardSummary> state;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semanticColors = theme.extension<AppSemanticColors>();
+    final accent = semanticColors?.moduleAccent('notes') ?? theme.colorScheme.primary;
+
+    return ModuleCard<NotesDashboardSummary>(
+      icon: Icons.note_outlined,
+      accentColor: accent,
+      title: 'Notes',
+      state: state,
+      loadingHeight: 96,
+      onTap: onTap,
+      semanticLabel: 'Notes summary',
+      contentBuilder: (context, data) => _NotesCardBody(data: data),
+    );
+  }
+}
+
+class _NotesCardBody extends StatelessWidget {
+  const _NotesCardBody({required this.data});
+
+  final NotesDashboardSummary data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: StatCard(
+            icon: Icons.note_outlined,
+            label: 'Active',
+            value: data.activeCount.toDouble(),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: StatCard(
+            icon: Icons.archive_outlined,
+            label: 'Archived',
+            value: data.archivedCount.toDouble(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _MiniStat extends StatelessWidget {
   const _MiniStat({
     required this.icon,
@@ -644,6 +718,7 @@ class _QuickActionsSection extends StatelessWidget {
     this.onOpenTasks,
     this.onOpenHabits,
     this.onOpenGoals,
+    this.onOpenNotes,
   });
 
   final VoidCallback? onOpenFinance;
@@ -652,6 +727,7 @@ class _QuickActionsSection extends StatelessWidget {
   final VoidCallback? onOpenTasks;
   final VoidCallback? onOpenHabits;
   final VoidCallback? onOpenGoals;
+  final VoidCallback? onOpenNotes;
 
   @override
   Widget build(BuildContext context) {
@@ -700,6 +776,12 @@ class _QuickActionsSection extends StatelessWidget {
                   icon: Icons.flag_outlined,
                   label: 'Add Goal',
                   onTap: onOpenGoals!,
+                ),
+              if (onOpenNotes != null)
+                QuickActionButton(
+                  icon: Icons.note_add_outlined,
+                  label: 'Add Note',
+                  onTap: onOpenNotes!,
                 ),
             ],
           ),

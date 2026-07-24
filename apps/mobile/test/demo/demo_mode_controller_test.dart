@@ -1,12 +1,14 @@
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
+import 'package:feature_notes/notes.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_os/app/demo/demo_mode_controller.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
 import 'package:personal_os/app/demo/switchable_goal_storage.dart';
 import 'package:personal_os/app/demo/switchable_habit_storage.dart';
+import 'package:personal_os/app/demo/switchable_note_storage.dart';
 import 'package:personal_os/app/demo/switchable_task_storage.dart';
 
 const _ws = 'ws-demo-test';
@@ -36,7 +38,9 @@ final class _Harness {
         realHabitExecutor = InMemoryHabitDatabaseExecutor(),
         realHabitRunner = InMemoryHabitTransactionRunner(InMemoryHabitDatabaseExecutor()),
         realGoalExecutor = InMemoryGoalDatabaseExecutor(),
-        realGoalRunner = InMemoryGoalTransactionRunner(InMemoryGoalDatabaseExecutor()) {
+        realGoalRunner = InMemoryGoalTransactionRunner(InMemoryGoalDatabaseExecutor()),
+        realNoteExecutor = InMemoryNoteDatabaseExecutor(),
+        realNoteRunner = InMemoryNoteTransactionRunner(InMemoryNoteDatabaseExecutor()) {
     executor = SwitchableFinanceDatabaseExecutor(realExecutor);
     runner = SwitchableFinanceTransactionRunner(realRunner);
     taskExecutor = SwitchableTaskDatabaseExecutor(realTaskExecutor);
@@ -45,6 +49,8 @@ final class _Harness {
     habitRunner = SwitchableHabitTransactionRunner(realHabitRunner);
     goalExecutor = SwitchableGoalDatabaseExecutor(realGoalExecutor);
     goalRunner = SwitchableGoalTransactionRunner(realGoalRunner);
+    noteExecutor = SwitchableNoteDatabaseExecutor(realNoteExecutor);
+    noteRunner = SwitchableNoteTransactionRunner(realNoteRunner);
     controller = DemoModeController(
       financeExecutor: executor,
       financeRunner: runner,
@@ -62,6 +68,10 @@ final class _Harness {
       goalRunner: goalRunner,
       realGoalExecutor: realGoalExecutor,
       realGoalRunner: realGoalRunner,
+      noteExecutor: noteExecutor,
+      noteRunner: noteRunner,
+      realNoteExecutor: realNoteExecutor,
+      realNoteRunner: realNoteRunner,
       workspaceId: _ws,
     );
   }
@@ -74,6 +84,8 @@ final class _Harness {
   final InMemoryHabitTransactionRunner realHabitRunner;
   final InMemoryGoalDatabaseExecutor realGoalExecutor;
   final InMemoryGoalTransactionRunner realGoalRunner;
+  final InMemoryNoteDatabaseExecutor realNoteExecutor;
+  final InMemoryNoteTransactionRunner realNoteRunner;
   late final SwitchableFinanceDatabaseExecutor executor;
   late final SwitchableFinanceTransactionRunner runner;
   late final SwitchableTaskDatabaseExecutor taskExecutor;
@@ -82,6 +94,8 @@ final class _Harness {
   late final SwitchableHabitTransactionRunner habitRunner;
   late final SwitchableGoalDatabaseExecutor goalExecutor;
   late final SwitchableGoalTransactionRunner goalRunner;
+  late final SwitchableNoteDatabaseExecutor noteExecutor;
+  late final SwitchableNoteTransactionRunner noteRunner;
   late final DemoModeController controller;
 }
 

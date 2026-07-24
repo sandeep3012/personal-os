@@ -37,6 +37,9 @@ abstract final class ShellBranches {
   static const String goalsPath = '/goals';
   static const String goalsName = 'goals';
 
+  static const String notesPath = '/notes';
+  static const String notesName = 'notes';
+
   static const String settingsPath = '/settings';
   static const String settingsName = 'settings';
 
@@ -69,6 +72,11 @@ abstract final class ShellBranches {
       label: 'Goals',
     ),
     ShellDestination(
+      icon: Icons.note_outlined,
+      selectedIcon: Icons.note,
+      label: 'Notes',
+    ),
+    ShellDestination(
       icon: Icons.settings_outlined,
       selectedIcon: Icons.settings,
       label: 'Settings',
@@ -95,6 +103,7 @@ abstract final class ShellBranches {
     required Widget Function(BuildContext context, GoRouterState state) tasksBuilder,
     required Widget Function(BuildContext context, GoRouterState state) habitsBuilder,
     required Widget Function(BuildContext context, GoRouterState state) goalsBuilder,
+    required Widget Function(BuildContext context, GoRouterState state) notesBuilder,
   }) =>
       [
         StatefulShellBranch(
@@ -131,6 +140,15 @@ abstract final class ShellBranches {
               path: goalsPath,
               name: goalsName,
               builder: goalsBuilder,
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: notesPath,
+              name: notesName,
+              builder: notesBuilder,
             ),
           ],
         ),

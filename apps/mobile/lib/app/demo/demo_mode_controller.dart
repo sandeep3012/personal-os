@@ -1,15 +1,18 @@
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
+import 'package:feature_notes/notes.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:flutter/foundation.dart';
 import 'package:personal_os/app/demo/demo_finance_seed_data.dart';
 import 'package:personal_os/app/demo/demo_goal_seed_data.dart';
 import 'package:personal_os/app/demo/demo_habit_seed_data.dart';
+import 'package:personal_os/app/demo/demo_note_seed_data.dart';
 import 'package:personal_os/app/demo/demo_task_seed_data.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
 import 'package:personal_os/app/demo/switchable_goal_storage.dart';
 import 'package:personal_os/app/demo/switchable_habit_storage.dart';
+import 'package:personal_os/app/demo/switchable_note_storage.dart';
 import 'package:personal_os/app/demo/switchable_task_storage.dart';
 
 /// Owns whether the app is currently showing sample data instead of the
@@ -53,6 +56,10 @@ final class DemoModeController extends ChangeNotifier {
     required SwitchableGoalTransactionRunner goalRunner,
     required IGoalDatabaseExecutor realGoalExecutor,
     required IGoalTransactionRunner realGoalRunner,
+    required SwitchableNoteDatabaseExecutor noteExecutor,
+    required SwitchableNoteTransactionRunner noteRunner,
+    required INoteDatabaseExecutor realNoteExecutor,
+    required INoteTransactionRunner realNoteRunner,
     required this.workspaceId,
   })  : _financeExecutor = financeExecutor,
         _financeRunner = financeRunner,
@@ -69,7 +76,11 @@ final class DemoModeController extends ChangeNotifier {
         _goalExecutor = goalExecutor,
         _goalRunner = goalRunner,
         _realGoalExecutor = realGoalExecutor,
-        _realGoalRunner = realGoalRunner;
+        _realGoalRunner = realGoalRunner,
+        _noteExecutor = noteExecutor,
+        _noteRunner = noteRunner,
+        _realNoteExecutor = realNoteExecutor,
+        _realNoteRunner = realNoteRunner;
 
   final SwitchableFinanceDatabaseExecutor _financeExecutor;
   final SwitchableFinanceTransactionRunner _financeRunner;
@@ -90,6 +101,11 @@ final class DemoModeController extends ChangeNotifier {
   final SwitchableGoalTransactionRunner _goalRunner;
   final IGoalDatabaseExecutor _realGoalExecutor;
   final IGoalTransactionRunner _realGoalRunner;
+
+  final SwitchableNoteDatabaseExecutor _noteExecutor;
+  final SwitchableNoteTransactionRunner _noteRunner;
+  final INoteDatabaseExecutor _realNoteExecutor;
+  final INoteTransactionRunner _realNoteRunner;
 
   final String workspaceId;
 
@@ -127,6 +143,11 @@ final class DemoModeController extends ChangeNotifier {
     _goalExecutor.switchTo(demoGoalExecutor);
     _goalRunner.switchTo(InMemoryGoalTransactionRunner(demoGoalExecutor));
 
+    final demoNoteExecutor = InMemoryNoteDatabaseExecutor();
+    await DemoNoteSeedData.seed(demoNoteExecutor, workspaceId: workspaceId);
+    _noteExecutor.switchTo(demoNoteExecutor);
+    _noteRunner.switchTo(InMemoryNoteTransactionRunner(demoNoteExecutor));
+
     _isDemoMode = true;
     _generation++;
     notifyListeners();
@@ -144,6 +165,8 @@ final class DemoModeController extends ChangeNotifier {
     _habitRunner.switchTo(_realHabitRunner);
     _goalExecutor.switchTo(_realGoalExecutor);
     _goalRunner.switchTo(_realGoalRunner);
+    _noteExecutor.switchTo(_realNoteExecutor);
+    _noteRunner.switchTo(_realNoteRunner);
 
     _isDemoMode = false;
     _generation++;

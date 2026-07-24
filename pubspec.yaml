@@ -17,6 +17,7 @@ workspace:
   - features/finance
   - features/goals
   - features/habits
+  - features/notes
   - features/sample
   - features/tasks
 

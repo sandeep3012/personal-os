@@ -4,6 +4,7 @@ import 'package:application/application.dart';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
+import 'package:feature_notes/notes.dart';
 import 'package:feature_sample/sample.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:path_provider/path_provider.dart';
@@ -15,12 +16,14 @@ import 'package:personal_os/app/bootstrap/app_module.dart';
 import 'package:personal_os/app/bootstrap/finance_storage_module.dart';
 import 'package:personal_os/app/bootstrap/goals_storage_module.dart';
 import 'package:personal_os/app/bootstrap/habits_storage_module.dart';
+import 'package:personal_os/app/bootstrap/notes_storage_module.dart';
 import 'package:personal_os/app/bootstrap/tasks_storage_module.dart';
 import 'package:personal_os/app/demo/demo_mode_controller.dart';
 import 'package:personal_os/app/demo/demo_module.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
 import 'package:personal_os/app/demo/switchable_goal_storage.dart';
 import 'package:personal_os/app/demo/switchable_habit_storage.dart';
+import 'package:personal_os/app/demo/switchable_note_storage.dart';
 import 'package:personal_os/app/demo/switchable_task_storage.dart';
 import 'package:personal_os/app/onboarding/onboarding_module.dart';
 import 'package:personal_os/app/onboarding/onboarding_status_store.dart';
@@ -124,6 +127,7 @@ final class AppBootstrap {
     File? tasksStorageFile,
     File? habitsStorageFile,
     File? goalsStorageFile,
+    File? notesStorageFile,
     File? onboardingStatusFile,
   }) async {
     final financeExecutor = await FileBackedFinanceDatabaseExecutor.open(
@@ -146,6 +150,11 @@ final class AppBootstrap {
     );
     final realGoalRunner = FileBackedGoalTransactionRunner(goalExecutor);
 
+    final noteExecutor = await FileBackedNoteDatabaseExecutor.open(
+      notesStorageFile ?? await _defaultNotesStorageFile(),
+    );
+    final realNoteRunner = FileBackedNoteTransactionRunner(noteExecutor);
+
     // The switchable pairs are what FinanceStorageModule/TasksStorageModule/
     // HabitsStorageModule actually bind — every Finance/Tasks/Habits
     // repository resolves these instances for the app's lifetime.
@@ -161,6 +170,8 @@ final class AppBootstrap {
     final switchableHabitRunner = SwitchableHabitTransactionRunner(realHabitRunner);
     final switchableGoalExecutor = SwitchableGoalDatabaseExecutor(goalExecutor);
     final switchableGoalRunner = SwitchableGoalTransactionRunner(realGoalRunner);
+    final switchableNoteExecutor = SwitchableNoteDatabaseExecutor(noteExecutor);
+    final switchableNoteRunner = SwitchableNoteTransactionRunner(realNoteRunner);
     final demoModeController = DemoModeController(
       financeExecutor: switchableFinanceExecutor,
       financeRunner: switchableFinanceRunner,
@@ -178,6 +189,10 @@ final class AppBootstrap {
       goalRunner: switchableGoalRunner,
       realGoalExecutor: goalExecutor,
       realGoalRunner: realGoalRunner,
+      noteExecutor: switchableNoteExecutor,
+      noteRunner: switchableNoteRunner,
+      realNoteExecutor: noteExecutor,
+      realNoteRunner: realNoteRunner,
       workspaceId: WorkspaceContext.defaultWorkspaceId,
     );
 
@@ -209,6 +224,11 @@ final class AppBootstrap {
         runner: switchableGoalRunner,
       ))
       ..addModule(const GoalsModule())                          // installs the Goals feature
+      ..addModule(NotesStorageModule(                            // binds Notes' persistence
+        executor: switchableNoteExecutor,
+        runner: switchableNoteRunner,
+      ))
+      ..addModule(const NotesModule())                          // installs the Notes feature
       ..addModule(DemoModule(controller: demoModeController))    // Demo Mode management (Milestone 6)
       ..addModule(OnboardingModule(store: onboardingStore))      // first-run status (Milestone 6)
       ..addModule(const SampleModule());                        // validates Feature Framework
@@ -267,6 +287,12 @@ final class AppBootstrap {
   static Future<File> _defaultGoalsStorageFile() async {
     final directory = await getApplicationDocumentsDirectory();
     return File('${directory.path}/goals_data.json');
+  }
+
+  /// The production Notes storage file: `<app documents dir>/notes_data.json`.
+  static Future<File> _defaultNotesStorageFile() async {
+    final directory = await getApplicationDocumentsDirectory();
+    return File('${directory.path}/notes_data.json');
   }
 
   /// The production onboarding status file: `<app documents dir>/onboarding_status.json`.

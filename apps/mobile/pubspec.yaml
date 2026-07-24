@@ -13,6 +13,7 @@ dependencies:
   feature_finance: any
   feature_goals: any
   feature_habits: any
+  feature_notes: any
   feature_sample: any
   feature_tasks: any
   flutter:

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
+import 'package:feature_notes/notes.dart';
 import 'package:feature_sample/sample.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:flutter/material.dart';
@@ -78,6 +79,7 @@ class _PersonalOsAppState extends State<PersonalOsApp>
       tasksBuilder: _buildTasks,
       habitsBuilder: _buildHabits,
       goalsBuilder: _buildGoals,
+      notesBuilder: _buildNotes,
       demoModeController: _demoModeController,
       financeRoutes: _buildFinanceRoutes(),
       otherTopLevelRoutes: _buildOtherTopLevelRoutes(),
@@ -97,6 +99,7 @@ class _PersonalOsAppState extends State<PersonalOsApp>
         tasksViewModel: widget.bootstrap.registry.get<TasksHomeViewModel>(),
         habitsViewModel: widget.bootstrap.registry.get<HabitsHomeViewModel>(),
         goalsViewModel: widget.bootstrap.registry.get<GoalsHomeViewModel>(),
+        notesViewModel: widget.bootstrap.registry.get<NotesHomeViewModel>(),
         onOpenFinance: () => context.goNamed(FinanceRoutes.root.name),
         onOpenAccounts: () => context.goNamed(FinanceRoutes.accounts.name),
         onOpenTransactions: () =>
@@ -104,6 +107,7 @@ class _PersonalOsAppState extends State<PersonalOsApp>
         onOpenTasks: () => context.goNamed(TasksRoutes.root.name),
         onOpenHabits: () => context.goNamed(HabitsRoutes.root.name),
         onOpenGoals: () => context.goNamed(GoalsRoutes.root.name),
+        onOpenNotes: () => context.goNamed(NotesRoutes.root.name),
       );
 
   /// Builds the Settings branch's landing screen — the real [SettingsPage]
@@ -125,6 +129,11 @@ class _PersonalOsAppState extends State<PersonalOsApp>
   /// mirroring how Habits' routes are built.
   Widget _buildGoals(BuildContext context, GoRouterState state) =>
       GoalsPage(viewModel: widget.bootstrap.registry.get<GoalsViewModel>());
+
+  /// Builds the Notes branch's landing screen — the real [NotesPage],
+  /// mirroring how Goals' routes are built.
+  Widget _buildNotes(BuildContext context, GoRouterState state) =>
+      NotesPage(viewModel: widget.bootstrap.registry.get<NotesViewModel>());
 
   /// Builds the first-run onboarding route (Milestone 6 Part B) — a
   /// top-level route outside the shell, exactly like [AppRouter.diagnosticsPath].

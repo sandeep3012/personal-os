@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
+import 'package:feature_notes/notes.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -43,6 +44,11 @@ File _tempGoalsFile() => File(
       '/goals_data.json',
     );
 
+File _tempNotesFile() => File(
+      '${Directory.systemTemp.createTempSync('home_dashboard_notes_test_').path}'
+      '/notes_data.json',
+    );
+
 File _tempOnboardingFile() => File(
       '${Directory.systemTemp.createTempSync('home_dashboard_onboarding_test_').path}'
       '/onboarding_status.json',
@@ -53,6 +59,7 @@ Future<AppBootstrap> _boot() => AppBootstrap.boot(
       tasksStorageFile: _tempTasksFile(),
       habitsStorageFile: _tempHabitsFile(),
       goalsStorageFile: _tempGoalsFile(),
+      notesStorageFile: _tempNotesFile(),
       onboardingStatusFile: _tempOnboardingFile(),
     );
 
@@ -66,6 +73,7 @@ Widget _buildPage(
         tasksViewModel: bootstrap.registry.get<TasksHomeViewModel>(),
         habitsViewModel: bootstrap.registry.get<HabitsHomeViewModel>(),
         goalsViewModel: bootstrap.registry.get<GoalsHomeViewModel>(),
+        notesViewModel: bootstrap.registry.get<NotesHomeViewModel>(),
         onOpenFinance: onOpenFinance,
       ),
     );
@@ -82,16 +90,16 @@ void main() {
 
         // Finance, Tasks, and Habits module cards each render their own
         // loading indicator independently (design_system ModuleCard —
-        // TIS §5 "Loading / Error isolation"). Goals' card is below the
-        // default test viewport, so its lazy ListView element hasn't been
-        // built yet — asserted once scrolled into view below.
+        // TIS §5 "Loading / Error isolation"). Goals' and Notes' cards are
+        // below the default test viewport, so their lazy ListView elements
+        // haven't been built yet — asserted once scrolled into view below.
         expect(find.byType(CircularProgressIndicator), findsNWidgets(3));
       });
     });
 
     testWidgets(
-        'shows the greeting header, Finance/Tasks/Habits/Goals cards, and '
-        'placeholder modules once loaded', (tester) async {
+        'shows the greeting header, Finance/Tasks/Habits/Goals/Notes cards, '
+        'and placeholder modules once loaded', (tester) async {
       await tester.runAsync(() async {
         final bootstrap = await _boot();
         addTearDown(bootstrap.shutdown);
@@ -104,17 +112,17 @@ void main() {
         expect(find.text('Tasks'), findsOneWidget);
         expect(find.text('Habits'), findsOneWidget);
         // 'Active' appears once each for Tasks and Habits above the fold;
-        // Goals' card (also 'Active') is scrolled into view and asserted
-        // separately below.
+        // Goals' and Notes' cards (also 'Active') are scrolled into view
+        // and asserted separately below.
         expect(find.text('Active'), findsNWidgets(2));
         expect(find.text('Completed today'), findsNWidgets(2));
 
-        // The placeholder module grid — and Goals' card — is further down
-        // the page than the default 800x600 test viewport shows — a lazy
-        // ListView doesn't build off-screen children at all, so each must
-        // be scrolled into view before it exists in the tree to assert
-        // against. Habits is no longer a placeholder — it now has real
-        // data, asserted above.
+        // The placeholder module grid — and Goals'/Notes' cards — are
+        // further down the page than the default 800x600 test viewport
+        // shows — a lazy ListView doesn't build off-screen children at all,
+        // so each must be scrolled into view before it exists in the tree
+        // to assert against. Habits is no longer a placeholder — it now has
+        // real data, asserted above.
         await tester.scrollUntilVisible(
           find.text('Goals'),
           200,
@@ -122,6 +130,14 @@ void main() {
         );
         expect(find.text('Goals'), findsOneWidget);
         expect(find.text('Active'), findsNWidgets(3));
+
+        await tester.scrollUntilVisible(
+          find.text('Notes'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(find.text('Notes'), findsOneWidget);
+        expect(find.text('Active'), findsNWidgets(4));
 
         for (final label in [
           'Documents',

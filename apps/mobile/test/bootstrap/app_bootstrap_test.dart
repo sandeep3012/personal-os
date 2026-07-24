@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
+import 'package:feature_notes/notes.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_core/config/app_config.dart';
 import 'package:platform_core/environment/build_environment.dart';
@@ -35,6 +36,11 @@ File _tempGoalsFile() => File(
       '/goals_data.json',
     );
 
+File _tempNotesFile() => File(
+      '${Directory.systemTemp.createTempSync('notes_bootstrap_test_').path}'
+      '/notes_data.json',
+    );
+
 File _tempOnboardingFile() => File(
       '${Directory.systemTemp.createTempSync('onboarding_bootstrap_test_').path}'
       '/onboarding_status.json',
@@ -45,6 +51,7 @@ Future<AppBootstrap> _boot({
   File? tasksStorageFile,
   File? habitsStorageFile,
   File? goalsStorageFile,
+  File? notesStorageFile,
   File? onboardingStatusFile,
 }) =>
     AppBootstrap.boot(
@@ -52,6 +59,7 @@ Future<AppBootstrap> _boot({
       tasksStorageFile: tasksStorageFile ?? _tempTasksFile(),
       habitsStorageFile: habitsStorageFile ?? _tempHabitsFile(),
       goalsStorageFile: goalsStorageFile ?? _tempGoalsFile(),
+      notesStorageFile: notesStorageFile ?? _tempNotesFile(),
       onboardingStatusFile: onboardingStatusFile ?? _tempOnboardingFile(),
     );
 
@@ -245,6 +253,49 @@ void main() {
           'file-backed persistence layer', () async {
         final bootstrap = await _boot();
         final viewModel = bootstrap.registry.get<GoalsViewModel>();
+
+        await expectLater(viewModel.load(), completes);
+        expect(viewModel.state.isError, isFalse);
+
+        await bootstrap.shutdown();
+      });
+    });
+
+    group('Notes persistence binding', () {
+      test('INoteDatabaseExecutor is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<INoteDatabaseExecutor>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('INoteTransactionRunner is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<INoteTransactionRunner>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('every Notes ViewModel resolves without throwing', () async {
+        final bootstrap = await _boot();
+        expect(
+          () {
+            bootstrap.registry.get<NotesHomeViewModel>();
+            bootstrap.registry.get<NotesViewModel>();
+          },
+          returnsNormally,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('GetNotesUseCase resolves and executes against the '
+          'file-backed persistence layer', () async {
+        final bootstrap = await _boot();
+        final viewModel = bootstrap.registry.get<NotesViewModel>();
 
         await expectLater(viewModel.load(), completes);
         expect(viewModel.state.isError, isFalse);

@@ -1,6 +1,7 @@
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
+import 'package:feature_notes/notes.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +10,7 @@ import 'package:personal_os/app/demo/demo_mode_controller.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
 import 'package:personal_os/app/demo/switchable_goal_storage.dart';
 import 'package:personal_os/app/demo/switchable_habit_storage.dart';
+import 'package:personal_os/app/demo/switchable_note_storage.dart';
 import 'package:personal_os/app/demo/switchable_task_storage.dart';
 import 'package:platform_core/config/app_config.dart';
 import 'package:platform_core/environment/build_environment.dart';
@@ -28,6 +30,8 @@ DemoModeController _dummyDemoModeController() {
   final realHabitRunner = InMemoryHabitTransactionRunner(realHabitExecutor);
   final realGoalExecutor = InMemoryGoalDatabaseExecutor();
   final realGoalRunner = InMemoryGoalTransactionRunner(realGoalExecutor);
+  final realNoteExecutor = InMemoryNoteDatabaseExecutor();
+  final realNoteRunner = InMemoryNoteTransactionRunner(realNoteExecutor);
   return DemoModeController(
     financeExecutor: SwitchableFinanceDatabaseExecutor(realExecutor),
     financeRunner: SwitchableFinanceTransactionRunner(realRunner),
@@ -45,6 +49,10 @@ DemoModeController _dummyDemoModeController() {
     goalRunner: SwitchableGoalTransactionRunner(realGoalRunner),
     realGoalExecutor: realGoalExecutor,
     realGoalRunner: realGoalRunner,
+    noteExecutor: SwitchableNoteDatabaseExecutor(realNoteExecutor),
+    noteRunner: SwitchableNoteTransactionRunner(realNoteRunner),
+    realNoteExecutor: realNoteExecutor,
+    realNoteRunner: realNoteRunner,
     workspaceId: 'default-workspace',
   );
 }
@@ -61,6 +69,7 @@ const _settingsText = 'Settings branch placeholder';
 const _tasksText = 'Tasks branch placeholder';
 const _habitsText = 'Habits branch placeholder';
 const _goalsText = 'Goals branch placeholder';
+const _notesText = 'Notes branch placeholder';
 
 /// A minimal stand-in for Finance's real routes — a `StatefulShellBranch`
 /// requires at least one `GoRoute` descendant to derive a default location,
@@ -102,6 +111,11 @@ Widget _dummyHabitsBuilder(BuildContext context, GoRouterState state) =>
 Widget _dummyGoalsBuilder(BuildContext context, GoRouterState state) =>
     const Scaffold(body: Center(child: Text(_goalsText)));
 
+/// A minimal stand-in for the real Notes page builder — see
+/// [_dummyHomeBuilder].
+Widget _dummyNotesBuilder(BuildContext context, GoRouterState state) =>
+    const Scaffold(body: Center(child: Text(_notesText)));
+
 /// Pumps [routerConfig] at a Compact-width viewport (<600dp) so [AppShell]
 /// renders its bottom `NavigationBar` — the layout these navigation tests
 /// exercise (adaptive `NavigationRail` behavior at wider widths is a
@@ -126,6 +140,7 @@ void main() {
           tasksBuilder: _dummyTasksBuilder,
           habitsBuilder: _dummyHabitsBuilder,
           goalsBuilder: _dummyGoalsBuilder,
+          notesBuilder: _dummyNotesBuilder,
           demoModeController: _dummyDemoModeController(),
           financeRoutes: _dummyFinanceRoutes(),
         ));
@@ -164,6 +179,7 @@ void main() {
         tasksBuilder: _dummyTasksBuilder,
         habitsBuilder: _dummyHabitsBuilder,
         goalsBuilder: _dummyGoalsBuilder,
+        notesBuilder: _dummyNotesBuilder,
         demoModeController: _dummyDemoModeController(),
         financeRoutes: _dummyFinanceRoutes(),
         initialLocation: AppRouter.diagnosticsPath,
