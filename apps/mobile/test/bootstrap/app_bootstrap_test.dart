@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:feature_calendar/calendar.dart';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
@@ -41,6 +42,11 @@ File _tempNotesFile() => File(
       '/notes_data.json',
     );
 
+File _tempCalendarFile() => File(
+      '${Directory.systemTemp.createTempSync('calendar_bootstrap_test_').path}'
+      '/calendar_data.json',
+    );
+
 File _tempOnboardingFile() => File(
       '${Directory.systemTemp.createTempSync('onboarding_bootstrap_test_').path}'
       '/onboarding_status.json',
@@ -52,6 +58,7 @@ Future<AppBootstrap> _boot({
   File? habitsStorageFile,
   File? goalsStorageFile,
   File? notesStorageFile,
+  File? calendarStorageFile,
   File? onboardingStatusFile,
 }) =>
     AppBootstrap.boot(
@@ -60,6 +67,7 @@ Future<AppBootstrap> _boot({
       habitsStorageFile: habitsStorageFile ?? _tempHabitsFile(),
       goalsStorageFile: goalsStorageFile ?? _tempGoalsFile(),
       notesStorageFile: notesStorageFile ?? _tempNotesFile(),
+      calendarStorageFile: calendarStorageFile ?? _tempCalendarFile(),
       onboardingStatusFile: onboardingStatusFile ?? _tempOnboardingFile(),
     );
 
@@ -296,6 +304,49 @@ void main() {
           'file-backed persistence layer', () async {
         final bootstrap = await _boot();
         final viewModel = bootstrap.registry.get<NotesViewModel>();
+
+        await expectLater(viewModel.load(), completes);
+        expect(viewModel.state.isError, isFalse);
+
+        await bootstrap.shutdown();
+      });
+    });
+
+    group('Calendar persistence binding', () {
+      test('IEventDatabaseExecutor is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<IEventDatabaseExecutor>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('IEventTransactionRunner is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<IEventTransactionRunner>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('every Calendar ViewModel resolves without throwing', () async {
+        final bootstrap = await _boot();
+        expect(
+          () {
+            bootstrap.registry.get<CalendarHomeViewModel>();
+            bootstrap.registry.get<CalendarViewModel>();
+          },
+          returnsNormally,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('GetEventsUseCase resolves and executes against the '
+          'file-backed persistence layer', () async {
+        final bootstrap = await _boot();
+        final viewModel = bootstrap.registry.get<CalendarViewModel>();
 
         await expectLater(viewModel.load(), completes);
         expect(viewModel.state.isError, isFalse);

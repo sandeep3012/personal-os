@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:application/application.dart';
+import 'package:feature_calendar/calendar.dart';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
@@ -13,6 +14,7 @@ import 'package:platform_core/di/i_service_locator.dart';
 import 'package:platform_core/logging/i_logger.dart';
 import 'package:platform_runtime/bootstrap/runtime_bootstrap.dart';
 import 'package:personal_os/app/bootstrap/app_module.dart';
+import 'package:personal_os/app/bootstrap/calendar_storage_module.dart';
 import 'package:personal_os/app/bootstrap/finance_storage_module.dart';
 import 'package:personal_os/app/bootstrap/goals_storage_module.dart';
 import 'package:personal_os/app/bootstrap/habits_storage_module.dart';
@@ -20,6 +22,7 @@ import 'package:personal_os/app/bootstrap/notes_storage_module.dart';
 import 'package:personal_os/app/bootstrap/tasks_storage_module.dart';
 import 'package:personal_os/app/demo/demo_mode_controller.dart';
 import 'package:personal_os/app/demo/demo_module.dart';
+import 'package:personal_os/app/demo/switchable_calendar_storage.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
 import 'package:personal_os/app/demo/switchable_goal_storage.dart';
 import 'package:personal_os/app/demo/switchable_habit_storage.dart';
@@ -128,6 +131,7 @@ final class AppBootstrap {
     File? habitsStorageFile,
     File? goalsStorageFile,
     File? notesStorageFile,
+    File? calendarStorageFile,
     File? onboardingStatusFile,
   }) async {
     final financeExecutor = await FileBackedFinanceDatabaseExecutor.open(
@@ -155,6 +159,11 @@ final class AppBootstrap {
     );
     final realNoteRunner = FileBackedNoteTransactionRunner(noteExecutor);
 
+    final calendarExecutor = await FileBackedEventDatabaseExecutor.open(
+      calendarStorageFile ?? await _defaultCalendarStorageFile(),
+    );
+    final realCalendarRunner = FileBackedEventTransactionRunner(calendarExecutor);
+
     // The switchable pairs are what FinanceStorageModule/TasksStorageModule/
     // HabitsStorageModule actually bind — every Finance/Tasks/Habits
     // repository resolves these instances for the app's lifetime.
@@ -172,6 +181,8 @@ final class AppBootstrap {
     final switchableGoalRunner = SwitchableGoalTransactionRunner(realGoalRunner);
     final switchableNoteExecutor = SwitchableNoteDatabaseExecutor(noteExecutor);
     final switchableNoteRunner = SwitchableNoteTransactionRunner(realNoteRunner);
+    final switchableCalendarExecutor = SwitchableEventDatabaseExecutor(calendarExecutor);
+    final switchableCalendarRunner = SwitchableEventTransactionRunner(realCalendarRunner);
     final demoModeController = DemoModeController(
       financeExecutor: switchableFinanceExecutor,
       financeRunner: switchableFinanceRunner,
@@ -193,6 +204,10 @@ final class AppBootstrap {
       noteRunner: switchableNoteRunner,
       realNoteExecutor: noteExecutor,
       realNoteRunner: realNoteRunner,
+      calendarExecutor: switchableCalendarExecutor,
+      calendarRunner: switchableCalendarRunner,
+      realCalendarExecutor: calendarExecutor,
+      realCalendarRunner: realCalendarRunner,
       workspaceId: WorkspaceContext.defaultWorkspaceId,
     );
 
@@ -229,6 +244,11 @@ final class AppBootstrap {
         runner: switchableNoteRunner,
       ))
       ..addModule(const NotesModule())                          // installs the Notes feature
+      ..addModule(CalendarStorageModule(                         // binds Calendar's persistence
+        executor: switchableCalendarExecutor,
+        runner: switchableCalendarRunner,
+      ))
+      ..addModule(const CalendarModule())                       // installs the Calendar feature
       ..addModule(DemoModule(controller: demoModeController))    // Demo Mode management (Milestone 6)
       ..addModule(OnboardingModule(store: onboardingStore))      // first-run status (Milestone 6)
       ..addModule(const SampleModule());                        // validates Feature Framework
@@ -293,6 +313,12 @@ final class AppBootstrap {
   static Future<File> _defaultNotesStorageFile() async {
     final directory = await getApplicationDocumentsDirectory();
     return File('${directory.path}/notes_data.json');
+  }
+
+  /// The production Calendar storage file: `<app documents dir>/calendar_data.json`.
+  static Future<File> _defaultCalendarStorageFile() async {
+    final directory = await getApplicationDocumentsDirectory();
+    return File('${directory.path}/calendar_data.json');
   }
 
   /// The production onboarding status file: `<app documents dir>/onboarding_status.json`.

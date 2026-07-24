@@ -10,6 +10,7 @@ environment:
 dependencies:
   application: any
   design_system: any
+  feature_calendar: any
   feature_finance: any
   feature_goals: any
   feature_habits: any

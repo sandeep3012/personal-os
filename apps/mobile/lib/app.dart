@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:feature_calendar/calendar.dart';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
@@ -80,6 +81,7 @@ class _PersonalOsAppState extends State<PersonalOsApp>
       habitsBuilder: _buildHabits,
       goalsBuilder: _buildGoals,
       notesBuilder: _buildNotes,
+      calendarBuilder: _buildCalendar,
       demoModeController: _demoModeController,
       financeRoutes: _buildFinanceRoutes(),
       otherTopLevelRoutes: _buildOtherTopLevelRoutes(),
@@ -100,6 +102,7 @@ class _PersonalOsAppState extends State<PersonalOsApp>
         habitsViewModel: widget.bootstrap.registry.get<HabitsHomeViewModel>(),
         goalsViewModel: widget.bootstrap.registry.get<GoalsHomeViewModel>(),
         notesViewModel: widget.bootstrap.registry.get<NotesHomeViewModel>(),
+        calendarViewModel: widget.bootstrap.registry.get<CalendarHomeViewModel>(),
         onOpenFinance: () => context.goNamed(FinanceRoutes.root.name),
         onOpenAccounts: () => context.goNamed(FinanceRoutes.accounts.name),
         onOpenTransactions: () =>
@@ -108,6 +111,7 @@ class _PersonalOsAppState extends State<PersonalOsApp>
         onOpenHabits: () => context.goNamed(HabitsRoutes.root.name),
         onOpenGoals: () => context.goNamed(GoalsRoutes.root.name),
         onOpenNotes: () => context.goNamed(NotesRoutes.root.name),
+        onOpenCalendar: () => context.goNamed(CalendarRoutes.root.name),
       );
 
   /// Builds the Settings branch's landing screen — the real [SettingsPage]
@@ -134,6 +138,11 @@ class _PersonalOsAppState extends State<PersonalOsApp>
   /// mirroring how Goals' routes are built.
   Widget _buildNotes(BuildContext context, GoRouterState state) =>
       NotesPage(viewModel: widget.bootstrap.registry.get<NotesViewModel>());
+
+  /// Builds the Calendar branch's landing screen — the real [CalendarPage],
+  /// mirroring how Notes' routes are built.
+  Widget _buildCalendar(BuildContext context, GoRouterState state) =>
+      CalendarPage(viewModel: widget.bootstrap.registry.get<CalendarViewModel>());
 
   /// Builds the first-run onboarding route (Milestone 6 Part B) — a
   /// top-level route outside the shell, exactly like [AppRouter.diagnosticsPath].

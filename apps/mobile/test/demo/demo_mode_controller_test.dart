@@ -1,3 +1,4 @@
+import 'package:feature_calendar/calendar.dart';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
@@ -5,6 +6,7 @@ import 'package:feature_notes/notes.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_os/app/demo/demo_mode_controller.dart';
+import 'package:personal_os/app/demo/switchable_calendar_storage.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
 import 'package:personal_os/app/demo/switchable_goal_storage.dart';
 import 'package:personal_os/app/demo/switchable_habit_storage.dart';
@@ -40,7 +42,9 @@ final class _Harness {
         realGoalExecutor = InMemoryGoalDatabaseExecutor(),
         realGoalRunner = InMemoryGoalTransactionRunner(InMemoryGoalDatabaseExecutor()),
         realNoteExecutor = InMemoryNoteDatabaseExecutor(),
-        realNoteRunner = InMemoryNoteTransactionRunner(InMemoryNoteDatabaseExecutor()) {
+        realNoteRunner = InMemoryNoteTransactionRunner(InMemoryNoteDatabaseExecutor()),
+        realCalendarExecutor = InMemoryEventDatabaseExecutor(),
+        realCalendarRunner = InMemoryEventTransactionRunner(InMemoryEventDatabaseExecutor()) {
     executor = SwitchableFinanceDatabaseExecutor(realExecutor);
     runner = SwitchableFinanceTransactionRunner(realRunner);
     taskExecutor = SwitchableTaskDatabaseExecutor(realTaskExecutor);
@@ -51,6 +55,8 @@ final class _Harness {
     goalRunner = SwitchableGoalTransactionRunner(realGoalRunner);
     noteExecutor = SwitchableNoteDatabaseExecutor(realNoteExecutor);
     noteRunner = SwitchableNoteTransactionRunner(realNoteRunner);
+    calendarExecutor = SwitchableEventDatabaseExecutor(realCalendarExecutor);
+    calendarRunner = SwitchableEventTransactionRunner(realCalendarRunner);
     controller = DemoModeController(
       financeExecutor: executor,
       financeRunner: runner,
@@ -72,6 +78,10 @@ final class _Harness {
       noteRunner: noteRunner,
       realNoteExecutor: realNoteExecutor,
       realNoteRunner: realNoteRunner,
+      calendarExecutor: calendarExecutor,
+      calendarRunner: calendarRunner,
+      realCalendarExecutor: realCalendarExecutor,
+      realCalendarRunner: realCalendarRunner,
       workspaceId: _ws,
     );
   }
@@ -86,6 +96,8 @@ final class _Harness {
   final InMemoryGoalTransactionRunner realGoalRunner;
   final InMemoryNoteDatabaseExecutor realNoteExecutor;
   final InMemoryNoteTransactionRunner realNoteRunner;
+  final InMemoryEventDatabaseExecutor realCalendarExecutor;
+  final InMemoryEventTransactionRunner realCalendarRunner;
   late final SwitchableFinanceDatabaseExecutor executor;
   late final SwitchableFinanceTransactionRunner runner;
   late final SwitchableTaskDatabaseExecutor taskExecutor;
@@ -96,6 +108,8 @@ final class _Harness {
   late final SwitchableGoalTransactionRunner goalRunner;
   late final SwitchableNoteDatabaseExecutor noteExecutor;
   late final SwitchableNoteTransactionRunner noteRunner;
+  late final SwitchableEventDatabaseExecutor calendarExecutor;
+  late final SwitchableEventTransactionRunner calendarRunner;
   late final DemoModeController controller;
 }
 

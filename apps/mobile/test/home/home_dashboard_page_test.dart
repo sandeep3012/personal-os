@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:feature_calendar/calendar.dart';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
 import 'package:feature_habits/habits.dart';
@@ -49,6 +50,11 @@ File _tempNotesFile() => File(
       '/notes_data.json',
     );
 
+File _tempCalendarFile() => File(
+      '${Directory.systemTemp.createTempSync('home_dashboard_calendar_test_').path}'
+      '/calendar_data.json',
+    );
+
 File _tempOnboardingFile() => File(
       '${Directory.systemTemp.createTempSync('home_dashboard_onboarding_test_').path}'
       '/onboarding_status.json',
@@ -60,6 +66,7 @@ Future<AppBootstrap> _boot() => AppBootstrap.boot(
       habitsStorageFile: _tempHabitsFile(),
       goalsStorageFile: _tempGoalsFile(),
       notesStorageFile: _tempNotesFile(),
+      calendarStorageFile: _tempCalendarFile(),
       onboardingStatusFile: _tempOnboardingFile(),
     );
 
@@ -74,6 +81,7 @@ Widget _buildPage(
         habitsViewModel: bootstrap.registry.get<HabitsHomeViewModel>(),
         goalsViewModel: bootstrap.registry.get<GoalsHomeViewModel>(),
         notesViewModel: bootstrap.registry.get<NotesHomeViewModel>(),
+        calendarViewModel: bootstrap.registry.get<CalendarHomeViewModel>(),
         onOpenFinance: onOpenFinance,
       ),
     );
@@ -90,9 +98,10 @@ void main() {
 
         // Finance, Tasks, and Habits module cards each render their own
         // loading indicator independently (design_system ModuleCard —
-        // TIS §5 "Loading / Error isolation"). Goals' and Notes' cards are
-        // below the default test viewport, so their lazy ListView elements
-        // haven't been built yet — asserted once scrolled into view below.
+        // TIS §5 "Loading / Error isolation"). Goals', Notes', and
+        // Calendar's cards are below the default test viewport, so their
+        // lazy ListView elements haven't been built yet — asserted once
+        // scrolled into view below.
         expect(find.byType(CircularProgressIndicator), findsNWidgets(3));
       });
     });
@@ -138,6 +147,14 @@ void main() {
         );
         expect(find.text('Notes'), findsOneWidget);
         expect(find.text('Active'), findsNWidgets(4));
+
+        await tester.scrollUntilVisible(
+          find.text('Calendar'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(find.text('Calendar'), findsOneWidget);
+        expect(find.text('Upcoming'), findsOneWidget);
 
         for (final label in [
           'Documents',
