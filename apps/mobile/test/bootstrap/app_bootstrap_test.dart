@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:feature_assets/assets.dart';
 import 'package:feature_calendar/calendar.dart';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
@@ -47,6 +48,11 @@ File _tempCalendarFile() => File(
       '/calendar_data.json',
     );
 
+File _tempAssetsFile() => File(
+      '${Directory.systemTemp.createTempSync('assets_bootstrap_test_').path}'
+      '/assets_data.json',
+    );
+
 File _tempOnboardingFile() => File(
       '${Directory.systemTemp.createTempSync('onboarding_bootstrap_test_').path}'
       '/onboarding_status.json',
@@ -59,6 +65,7 @@ Future<AppBootstrap> _boot({
   File? goalsStorageFile,
   File? notesStorageFile,
   File? calendarStorageFile,
+  File? assetsStorageFile,
   File? onboardingStatusFile,
 }) =>
     AppBootstrap.boot(
@@ -68,6 +75,7 @@ Future<AppBootstrap> _boot({
       goalsStorageFile: goalsStorageFile ?? _tempGoalsFile(),
       notesStorageFile: notesStorageFile ?? _tempNotesFile(),
       calendarStorageFile: calendarStorageFile ?? _tempCalendarFile(),
+      assetsStorageFile: assetsStorageFile ?? _tempAssetsFile(),
       onboardingStatusFile: onboardingStatusFile ?? _tempOnboardingFile(),
     );
 
@@ -347,6 +355,49 @@ void main() {
           'file-backed persistence layer', () async {
         final bootstrap = await _boot();
         final viewModel = bootstrap.registry.get<CalendarViewModel>();
+
+        await expectLater(viewModel.load(), completes);
+        expect(viewModel.state.isError, isFalse);
+
+        await bootstrap.shutdown();
+      });
+    });
+
+    group('Assets persistence binding', () {
+      test('IAssetDatabaseExecutor is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<IAssetDatabaseExecutor>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('IAssetTransactionRunner is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<IAssetTransactionRunner>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('every Assets ViewModel resolves without throwing', () async {
+        final bootstrap = await _boot();
+        expect(
+          () {
+            bootstrap.registry.get<AssetsHomeViewModel>();
+            bootstrap.registry.get<AssetsViewModel>();
+          },
+          returnsNormally,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('GetAssetsUseCase resolves and executes against the '
+          'file-backed persistence layer', () async {
+        final bootstrap = await _boot();
+        final viewModel = bootstrap.registry.get<AssetsViewModel>();
 
         await expectLater(viewModel.load(), completes);
         expect(viewModel.state.isError, isFalse);

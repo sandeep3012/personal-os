@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:feature_assets/assets.dart';
 import 'package:feature_calendar/calendar.dart';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
@@ -82,6 +83,7 @@ class _PersonalOsAppState extends State<PersonalOsApp>
       goalsBuilder: _buildGoals,
       notesBuilder: _buildNotes,
       calendarBuilder: _buildCalendar,
+      assetsBuilder: _buildAssets,
       demoModeController: _demoModeController,
       financeRoutes: _buildFinanceRoutes(),
       otherTopLevelRoutes: _buildOtherTopLevelRoutes(),
@@ -103,6 +105,7 @@ class _PersonalOsAppState extends State<PersonalOsApp>
         goalsViewModel: widget.bootstrap.registry.get<GoalsHomeViewModel>(),
         notesViewModel: widget.bootstrap.registry.get<NotesHomeViewModel>(),
         calendarViewModel: widget.bootstrap.registry.get<CalendarHomeViewModel>(),
+        assetsViewModel: widget.bootstrap.registry.get<AssetsHomeViewModel>(),
         onOpenFinance: () => context.goNamed(FinanceRoutes.root.name),
         onOpenAccounts: () => context.goNamed(FinanceRoutes.accounts.name),
         onOpenTransactions: () =>
@@ -112,6 +115,7 @@ class _PersonalOsAppState extends State<PersonalOsApp>
         onOpenGoals: () => context.goNamed(GoalsRoutes.root.name),
         onOpenNotes: () => context.goNamed(NotesRoutes.root.name),
         onOpenCalendar: () => context.goNamed(CalendarRoutes.root.name),
+        onOpenAssets: () => context.goNamed(AssetsRoutes.root.name),
       );
 
   /// Builds the Settings branch's landing screen — the real [SettingsPage]
@@ -143,6 +147,11 @@ class _PersonalOsAppState extends State<PersonalOsApp>
   /// mirroring how Notes' routes are built.
   Widget _buildCalendar(BuildContext context, GoRouterState state) =>
       CalendarPage(viewModel: widget.bootstrap.registry.get<CalendarViewModel>());
+
+  /// Builds the Assets branch's landing screen — the real [AssetsPage],
+  /// mirroring how Calendar's routes are built.
+  Widget _buildAssets(BuildContext context, GoRouterState state) =>
+      AssetsPage(viewModel: widget.bootstrap.registry.get<AssetsViewModel>());
 
   /// Builds the first-run onboarding route (Milestone 6 Part B) — a
   /// top-level route outside the shell, exactly like [AppRouter.diagnosticsPath].

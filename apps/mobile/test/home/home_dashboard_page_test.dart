@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:feature_assets/assets.dart';
 import 'package:feature_calendar/calendar.dart';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
@@ -55,6 +56,11 @@ File _tempCalendarFile() => File(
       '/calendar_data.json',
     );
 
+File _tempAssetsFile() => File(
+      '${Directory.systemTemp.createTempSync('home_dashboard_assets_test_').path}'
+      '/assets_data.json',
+    );
+
 File _tempOnboardingFile() => File(
       '${Directory.systemTemp.createTempSync('home_dashboard_onboarding_test_').path}'
       '/onboarding_status.json',
@@ -67,6 +73,7 @@ Future<AppBootstrap> _boot() => AppBootstrap.boot(
       goalsStorageFile: _tempGoalsFile(),
       notesStorageFile: _tempNotesFile(),
       calendarStorageFile: _tempCalendarFile(),
+      assetsStorageFile: _tempAssetsFile(),
       onboardingStatusFile: _tempOnboardingFile(),
     );
 
@@ -82,6 +89,7 @@ Widget _buildPage(
         goalsViewModel: bootstrap.registry.get<GoalsHomeViewModel>(),
         notesViewModel: bootstrap.registry.get<NotesHomeViewModel>(),
         calendarViewModel: bootstrap.registry.get<CalendarHomeViewModel>(),
+        assetsViewModel: bootstrap.registry.get<AssetsHomeViewModel>(),
         onOpenFinance: onOpenFinance,
       ),
     );
@@ -156,9 +164,16 @@ void main() {
         expect(find.text('Calendar'), findsOneWidget);
         expect(find.text('Upcoming'), findsOneWidget);
 
+        await tester.scrollUntilVisible(
+          find.text('Assets'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(find.text('Assets'), findsOneWidget);
+        expect(find.text('Active'), findsNWidgets(5));
+
         for (final label in [
           'Documents',
-          'Assets',
           'AI Assistant',
         ]) {
           await tester.scrollUntilVisible(

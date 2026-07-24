@@ -43,6 +43,9 @@ abstract final class ShellBranches {
   static const String calendarPath = '/calendar';
   static const String calendarName = 'calendar';
 
+  static const String assetsPath = '/assets';
+  static const String assetsName = 'assets';
+
   static const String settingsPath = '/settings';
   static const String settingsName = 'settings';
 
@@ -85,6 +88,11 @@ abstract final class ShellBranches {
       label: 'Calendar',
     ),
     ShellDestination(
+      icon: Icons.inventory_2_outlined,
+      selectedIcon: Icons.inventory_2,
+      label: 'Assets',
+    ),
+    ShellDestination(
       icon: Icons.settings_outlined,
       selectedIcon: Icons.settings,
       label: 'Settings',
@@ -113,6 +121,7 @@ abstract final class ShellBranches {
     required Widget Function(BuildContext context, GoRouterState state) goalsBuilder,
     required Widget Function(BuildContext context, GoRouterState state) notesBuilder,
     required Widget Function(BuildContext context, GoRouterState state) calendarBuilder,
+    required Widget Function(BuildContext context, GoRouterState state) assetsBuilder,
   }) =>
       [
         StatefulShellBranch(
@@ -167,6 +176,15 @@ abstract final class ShellBranches {
               path: calendarPath,
               name: calendarName,
               builder: calendarBuilder,
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: assetsPath,
+              name: assetsName,
+              builder: assetsBuilder,
             ),
           ],
         ),

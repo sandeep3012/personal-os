@@ -1,3 +1,4 @@
+import 'package:feature_assets/assets.dart';
 import 'package:feature_calendar/calendar.dart';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
@@ -8,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:personal_os/app/demo/demo_mode_controller.dart';
+import 'package:personal_os/app/demo/switchable_asset_storage.dart';
 import 'package:personal_os/app/demo/switchable_calendar_storage.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
 import 'package:personal_os/app/demo/switchable_goal_storage.dart';
@@ -36,6 +38,8 @@ DemoModeController _dummyDemoModeController() {
   final realNoteRunner = InMemoryNoteTransactionRunner(realNoteExecutor);
   final realCalendarExecutor = InMemoryEventDatabaseExecutor();
   final realCalendarRunner = InMemoryEventTransactionRunner(realCalendarExecutor);
+  final realAssetExecutor = InMemoryAssetDatabaseExecutor();
+  final realAssetRunner = InMemoryAssetTransactionRunner(realAssetExecutor);
   return DemoModeController(
     financeExecutor: SwitchableFinanceDatabaseExecutor(realExecutor),
     financeRunner: SwitchableFinanceTransactionRunner(realRunner),
@@ -61,6 +65,10 @@ DemoModeController _dummyDemoModeController() {
     calendarRunner: SwitchableEventTransactionRunner(realCalendarRunner),
     realCalendarExecutor: realCalendarExecutor,
     realCalendarRunner: realCalendarRunner,
+    assetExecutor: SwitchableAssetDatabaseExecutor(realAssetExecutor),
+    assetRunner: SwitchableAssetTransactionRunner(realAssetRunner),
+    realAssetExecutor: realAssetExecutor,
+    realAssetRunner: realAssetRunner,
     workspaceId: 'default-workspace',
   );
 }
@@ -79,6 +87,7 @@ const _habitsText = 'Habits branch placeholder';
 const _goalsText = 'Goals branch placeholder';
 const _notesText = 'Notes branch placeholder';
 const _calendarText = 'Calendar branch placeholder';
+const _assetsText = 'Assets branch placeholder';
 
 /// A minimal stand-in for Finance's real routes — a `StatefulShellBranch`
 /// requires at least one `GoRoute` descendant to derive a default location,
@@ -130,6 +139,11 @@ Widget _dummyNotesBuilder(BuildContext context, GoRouterState state) =>
 Widget _dummyCalendarBuilder(BuildContext context, GoRouterState state) =>
     const Scaffold(body: Center(child: Text(_calendarText)));
 
+/// A minimal stand-in for the real Assets page builder — see
+/// [_dummyHomeBuilder].
+Widget _dummyAssetsBuilder(BuildContext context, GoRouterState state) =>
+    const Scaffold(body: Center(child: Text(_assetsText)));
+
 /// Pumps [routerConfig] at a Compact-width viewport (<600dp) so [AppShell]
 /// renders its bottom `NavigationBar` — the layout these navigation tests
 /// exercise (adaptive `NavigationRail` behavior at wider widths is a
@@ -156,6 +170,7 @@ void main() {
           goalsBuilder: _dummyGoalsBuilder,
           notesBuilder: _dummyNotesBuilder,
           calendarBuilder: _dummyCalendarBuilder,
+          assetsBuilder: _dummyAssetsBuilder,
           demoModeController: _dummyDemoModeController(),
           financeRoutes: _dummyFinanceRoutes(),
         ));
@@ -196,6 +211,7 @@ void main() {
         goalsBuilder: _dummyGoalsBuilder,
         notesBuilder: _dummyNotesBuilder,
         calendarBuilder: _dummyCalendarBuilder,
+        assetsBuilder: _dummyAssetsBuilder,
         demoModeController: _dummyDemoModeController(),
         financeRoutes: _dummyFinanceRoutes(),
         initialLocation: AppRouter.diagnosticsPath,

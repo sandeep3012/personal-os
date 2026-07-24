@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:application/application.dart';
+import 'package:feature_assets/assets.dart';
 import 'package:feature_calendar/calendar.dart';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
@@ -14,6 +15,7 @@ import 'package:platform_core/di/i_service_locator.dart';
 import 'package:platform_core/logging/i_logger.dart';
 import 'package:platform_runtime/bootstrap/runtime_bootstrap.dart';
 import 'package:personal_os/app/bootstrap/app_module.dart';
+import 'package:personal_os/app/bootstrap/assets_storage_module.dart';
 import 'package:personal_os/app/bootstrap/calendar_storage_module.dart';
 import 'package:personal_os/app/bootstrap/finance_storage_module.dart';
 import 'package:personal_os/app/bootstrap/goals_storage_module.dart';
@@ -22,6 +24,7 @@ import 'package:personal_os/app/bootstrap/notes_storage_module.dart';
 import 'package:personal_os/app/bootstrap/tasks_storage_module.dart';
 import 'package:personal_os/app/demo/demo_mode_controller.dart';
 import 'package:personal_os/app/demo/demo_module.dart';
+import 'package:personal_os/app/demo/switchable_asset_storage.dart';
 import 'package:personal_os/app/demo/switchable_calendar_storage.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
 import 'package:personal_os/app/demo/switchable_goal_storage.dart';
@@ -132,6 +135,7 @@ final class AppBootstrap {
     File? goalsStorageFile,
     File? notesStorageFile,
     File? calendarStorageFile,
+    File? assetsStorageFile,
     File? onboardingStatusFile,
   }) async {
     final financeExecutor = await FileBackedFinanceDatabaseExecutor.open(
@@ -164,6 +168,11 @@ final class AppBootstrap {
     );
     final realCalendarRunner = FileBackedEventTransactionRunner(calendarExecutor);
 
+    final assetExecutor = await FileBackedAssetDatabaseExecutor.open(
+      assetsStorageFile ?? await _defaultAssetsStorageFile(),
+    );
+    final realAssetRunner = FileBackedAssetTransactionRunner(assetExecutor);
+
     // The switchable pairs are what FinanceStorageModule/TasksStorageModule/
     // HabitsStorageModule actually bind — every Finance/Tasks/Habits
     // repository resolves these instances for the app's lifetime.
@@ -183,6 +192,8 @@ final class AppBootstrap {
     final switchableNoteRunner = SwitchableNoteTransactionRunner(realNoteRunner);
     final switchableCalendarExecutor = SwitchableEventDatabaseExecutor(calendarExecutor);
     final switchableCalendarRunner = SwitchableEventTransactionRunner(realCalendarRunner);
+    final switchableAssetExecutor = SwitchableAssetDatabaseExecutor(assetExecutor);
+    final switchableAssetRunner = SwitchableAssetTransactionRunner(realAssetRunner);
     final demoModeController = DemoModeController(
       financeExecutor: switchableFinanceExecutor,
       financeRunner: switchableFinanceRunner,
@@ -208,6 +219,10 @@ final class AppBootstrap {
       calendarRunner: switchableCalendarRunner,
       realCalendarExecutor: calendarExecutor,
       realCalendarRunner: realCalendarRunner,
+      assetExecutor: switchableAssetExecutor,
+      assetRunner: switchableAssetRunner,
+      realAssetExecutor: assetExecutor,
+      realAssetRunner: realAssetRunner,
       workspaceId: WorkspaceContext.defaultWorkspaceId,
     );
 
@@ -249,6 +264,11 @@ final class AppBootstrap {
         runner: switchableCalendarRunner,
       ))
       ..addModule(const CalendarModule())                       // installs the Calendar feature
+      ..addModule(AssetsStorageModule(                           // binds Assets' persistence
+        executor: switchableAssetExecutor,
+        runner: switchableAssetRunner,
+      ))
+      ..addModule(const AssetsModule())                         // installs the Assets feature
       ..addModule(DemoModule(controller: demoModeController))    // Demo Mode management (Milestone 6)
       ..addModule(OnboardingModule(store: onboardingStore))      // first-run status (Milestone 6)
       ..addModule(const SampleModule());                        // validates Feature Framework
@@ -319,6 +339,12 @@ final class AppBootstrap {
   static Future<File> _defaultCalendarStorageFile() async {
     final directory = await getApplicationDocumentsDirectory();
     return File('${directory.path}/calendar_data.json');
+  }
+
+  /// The production Assets storage file: `<app documents dir>/assets_data.json`.
+  static Future<File> _defaultAssetsStorageFile() async {
+    final directory = await getApplicationDocumentsDirectory();
+    return File('${directory.path}/assets_data.json');
   }
 
   /// The production onboarding status file: `<app documents dir>/onboarding_status.json`.

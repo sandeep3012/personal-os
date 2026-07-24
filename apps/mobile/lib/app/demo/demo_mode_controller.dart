@@ -1,3 +1,4 @@
+import 'package:feature_assets/assets.dart';
 import 'package:feature_calendar/calendar.dart';
 import 'package:feature_finance/finance.dart';
 import 'package:feature_goals/goals.dart';
@@ -5,12 +6,14 @@ import 'package:feature_habits/habits.dart';
 import 'package:feature_notes/notes.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:flutter/foundation.dart';
+import 'package:personal_os/app/demo/demo_asset_seed_data.dart';
 import 'package:personal_os/app/demo/demo_calendar_seed_data.dart';
 import 'package:personal_os/app/demo/demo_finance_seed_data.dart';
 import 'package:personal_os/app/demo/demo_goal_seed_data.dart';
 import 'package:personal_os/app/demo/demo_habit_seed_data.dart';
 import 'package:personal_os/app/demo/demo_note_seed_data.dart';
 import 'package:personal_os/app/demo/demo_task_seed_data.dart';
+import 'package:personal_os/app/demo/switchable_asset_storage.dart';
 import 'package:personal_os/app/demo/switchable_calendar_storage.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
 import 'package:personal_os/app/demo/switchable_goal_storage.dart';
@@ -67,6 +70,10 @@ final class DemoModeController extends ChangeNotifier {
     required SwitchableEventTransactionRunner calendarRunner,
     required IEventDatabaseExecutor realCalendarExecutor,
     required IEventTransactionRunner realCalendarRunner,
+    required SwitchableAssetDatabaseExecutor assetExecutor,
+    required SwitchableAssetTransactionRunner assetRunner,
+    required IAssetDatabaseExecutor realAssetExecutor,
+    required IAssetTransactionRunner realAssetRunner,
     required this.workspaceId,
   })  : _financeExecutor = financeExecutor,
         _financeRunner = financeRunner,
@@ -91,7 +98,11 @@ final class DemoModeController extends ChangeNotifier {
         _calendarExecutor = calendarExecutor,
         _calendarRunner = calendarRunner,
         _realCalendarExecutor = realCalendarExecutor,
-        _realCalendarRunner = realCalendarRunner;
+        _realCalendarRunner = realCalendarRunner,
+        _assetExecutor = assetExecutor,
+        _assetRunner = assetRunner,
+        _realAssetExecutor = realAssetExecutor,
+        _realAssetRunner = realAssetRunner;
 
   final SwitchableFinanceDatabaseExecutor _financeExecutor;
   final SwitchableFinanceTransactionRunner _financeRunner;
@@ -122,6 +133,11 @@ final class DemoModeController extends ChangeNotifier {
   final SwitchableEventTransactionRunner _calendarRunner;
   final IEventDatabaseExecutor _realCalendarExecutor;
   final IEventTransactionRunner _realCalendarRunner;
+
+  final SwitchableAssetDatabaseExecutor _assetExecutor;
+  final SwitchableAssetTransactionRunner _assetRunner;
+  final IAssetDatabaseExecutor _realAssetExecutor;
+  final IAssetTransactionRunner _realAssetRunner;
 
   final String workspaceId;
 
@@ -169,6 +185,11 @@ final class DemoModeController extends ChangeNotifier {
     _calendarExecutor.switchTo(demoCalendarExecutor);
     _calendarRunner.switchTo(InMemoryEventTransactionRunner(demoCalendarExecutor));
 
+    final demoAssetExecutor = InMemoryAssetDatabaseExecutor();
+    await DemoAssetSeedData.seed(demoAssetExecutor, workspaceId: workspaceId);
+    _assetExecutor.switchTo(demoAssetExecutor);
+    _assetRunner.switchTo(InMemoryAssetTransactionRunner(demoAssetExecutor));
+
     _isDemoMode = true;
     _generation++;
     notifyListeners();
@@ -190,6 +211,8 @@ final class DemoModeController extends ChangeNotifier {
     _noteRunner.switchTo(_realNoteRunner);
     _calendarExecutor.switchTo(_realCalendarExecutor);
     _calendarRunner.switchTo(_realCalendarRunner);
+    _assetExecutor.switchTo(_realAssetExecutor);
+    _assetRunner.switchTo(_realAssetRunner);
 
     _isDemoMode = false;
     _generation++;
