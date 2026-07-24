@@ -325,3 +325,179 @@ existing module-registration order convention.
   rather than fixed dates, so "upcoming" events stay upcoming regardless of when Demo
   Mode is enabled — intentional, but worth noting as a deviation from Notes/Goals'
   fixed-content seed data.
+
+---
+
+# Assets Feature (this session)
+
+## Objective
+
+Implement a complete "Assets" feature — tracking owned items of value (name, category,
+monetary value, acquisition date, lifecycle status) — mirroring the Calendar/Notes/Goals
+reference implementations file-for-file across Domain, Data, Application, Presentation,
+Navigation, Home Dashboard, Demo Mode, and DI layers, with a full test suite at the same
+depth as Calendar's.
+
+## Domain design decisions
+
+- **Category**: plain `String` field (validated non-empty, ≤100 chars in the `Asset`
+  constructor), mirroring Finance's plain-string category pattern per
+  `DOC-031_Finance_Domain_Design.md` rather than a closed enum.
+- **Status**: `AssetStatus { active, disposed, archived }` — an extension of the
+  Notes/Calendar active/archived pattern with a third, business-meaningful terminal
+  state (`disposed`, for assets that are sold/given away/scrapped). Both `disposed` and
+  `archived` are terminal; only `active -> disposed` and `active -> archived` are
+  permitted transitions, enforced by `AssetStatusTransitions.canTransitionTo` and
+  `Asset.transitionTo`.
+- **Value**: `double value`, validated non-negative in the constructor (zero permitted,
+  negative rejected) — mirrors Goals' `targetValue` validation style but allows zero
+  since a free/fully-depreciated asset is a legitimate business case.
+- **Fields**: `name`, `category`, `value`, `acquisitionDate`, `status`, plus optional
+  `notes` (≤20,000 chars, mirrors `Note.content`) — no `EventTimeRange`-equivalent value
+  object; acquisition is a single `DateTime`, not a range.
+
+## Files Added
+
+- `features/assets/` — full feature package (pubspec, `lib/assets.dart` barrel,
+  domain/data/application/presentation/di source, full `test/` suite at the same
+  layer/file depth as `features/calendar/test/`):
+  - Domain: `Asset` entity, `AssetId`/`AssetStatus`/`AssetPage`/`AssetQuery` value
+    objects, `AssetsException`, `IAssetRepository`, domain events
+    (`AssetCreatedEvent`/`AssetUpdatedEvent`/`AssetArchivedEvent`/
+    `AssetDisposedEvent`/`AssetDeletedEvent`).
+  - Data: `AssetDao`, `AssetMapper`, `AssetRow`, `AssetQueryFilter`, `AssetsSchema`,
+    `CreateAssetsTableMigration`, in-memory + file-backed executor/transaction-runner
+    pairs, `AssetRepository`.
+  - Application: `CreateAssetUseCase`, `UpdateAssetUseCase`, `ArchiveAssetUseCase`,
+    `DisposeAssetUseCase`, `DeleteAssetUseCase`, `GetAssetUseCase`, `GetAssetsUseCase`,
+    `SearchAssetsUseCase`.
+  - Presentation: `AssetsViewModel`, `AssetsHomeViewModel` (+ `AssetsDashboardSummary`),
+    `AssetsPage`, `AssetsRoutes`.
+  - DI: `AssetsModule`.
+- `apps/mobile/lib/app/bootstrap/assets_storage_module.dart` — `AssetsStorageModule`,
+  mirrors `CalendarStorageModule`.
+- `apps/mobile/lib/app/demo/switchable_asset_storage.dart` —
+  `SwitchableAssetDatabaseExecutor`/`SwitchableAssetTransactionRunner`, mirrors
+  `switchable_calendar_storage.dart`.
+- `apps/mobile/lib/app/demo/demo_asset_seed_data.dart` — `DemoAssetSeedData`, five
+  realistic sample assets (four active, one archived), mirrors `DemoCalendarSeedData`.
+
+## Files Modified
+
+- `pubspec.yaml` — added `features/assets` to the workspace package list.
+- `apps/mobile/pubspec.yaml` — added `feature_assets: any` dependency.
+- `apps/mobile/lib/app/bootstrap/app_bootstrap.dart` — opens the file-backed Assets
+  executor/runner, builds the switchable pair, passes it into `DemoModeController`,
+  registers `AssetsStorageModule`/`AssetsModule` after Calendar's, adds
+  `assetsStorageFile` param and `_defaultAssetsStorageFile()`.
+- `apps/mobile/lib/app/demo/demo_mode_controller.dart` — added Assets
+  executor/runner/real-executor/real-runner constructor params and fields, seeds
+  `DemoAssetSeedData` in `enableDemoMode`, switches back in `exitDemoMode`.
+- `apps/mobile/lib/app/navigation/app_router.dart` — added `assetsBuilder` param,
+  threaded into `ShellBranches.build`.
+- `apps/mobile/lib/app/shell/shell_branches.dart` — added `assetsPath`/`assetsName`
+  constants, an Assets `ShellDestination` (between Calendar and Settings), the
+  `assetsBuilder` param, and the corresponding `StatefulShellBranch`.
+- `apps/mobile/lib/app.dart` — added `assetsBuilder: _buildAssets`, wired
+  `AssetsHomeViewModel`/`onOpenAssets` into `_buildHome`, added `_buildAssets()`.
+- `apps/mobile/lib/app/home/home_dashboard_page.dart` — added `assetsViewModel`/
+  `onOpenAssets`, load/refresh/Listenable wiring, `_AssetsModuleCard`/`_AssetsCardBody`
+  (using the pre-existing `'assets'` theme color key), `onOpenAssets` quick-action
+  button, and removed the static Assets placeholder card from `_PlaceholderModuleGrid`
+  now that Assets has real data (module doc comment updated accordingly).
+- `apps/mobile/test/navigation/app_router_test.dart`,
+  `apps/mobile/test/settings/settings_page_test.dart`,
+  `apps/mobile/test/demo/demo_mode_controller_test.dart`,
+  `apps/mobile/test/bootstrap/app_bootstrap_test.dart`,
+  `apps/mobile/test/home/home_dashboard_page_test.dart` — updated to construct the new
+  required Assets constructor params (`DemoModeController`, `AppBootstrap.boot`,
+  `HomeDashboardPage`), added an "Assets persistence binding" test group to
+  `app_bootstrap_test.dart` mirroring Calendar's, updated dashboard content assertions
+  for the new Assets card and its removal from the placeholder grid.
+
+## Implementation notes
+
+- **Domain/Data/Application**: produced by copying `features/calendar` wholesale, then
+  mechanically renaming (`Event*` → `Asset*`, `feature_calendar` → `feature_assets`,
+  package/class/file names), then hand-rewriting every entity/value-object/mapper/DAO/
+  use-case/test file's *content* for Assets' actual field shape (`name`/`category`/
+  `value`/`acquisitionDate`/`notes`/`status` instead of `title`/`timeRange`/`location`/
+  `description`). The mechanical rename pass initially mis-renamed `DomainEvent` (a real
+  `application` package base class) to `DomainAsset` and doubled up the `Event` suffix
+  on the domain-event classes (e.g. `AssetCreatedEvent` → `AssetCreatedAsset`); both
+  were caught and fixed during the static review pass by rewriting the four domain-event
+  files by hand.
+- **Presentation**: `AssetsPage` reuses `AppStateSwitcher`, `DocumentTile`,
+  `AppFormField`, and `showAppInputSurface` exactly as Calendar/Notes do — an
+  acquisition-date picker uses Flutter's stock `showDatePicker` (no new design-system
+  component). Both Archive and Dispose actions are exposed as buttons inside the edit
+  sheet.
+- **Home Dashboard**: `_AssetsModuleCard`/`_AssetsCardBody` follow the
+  `_CalendarModuleCard`/`_CalendarCardBody` pattern exactly, showing active-asset count
+  and total value via two `StatCard`s, using `ModuleCard<AssetsDashboardSummary>` and
+  the pre-existing `'assets'` `AppSemanticColors.moduleAccent` key.
+- **Demo Mode**: zero `isDemoMode` branching in `AssetRepository`/`AssetDao`/any use
+  case — the demo/real swap lives entirely in `SwitchableAssetDatabaseExecutor`/
+  `SwitchableAssetTransactionRunner` and `DemoModeController`, exactly like every other
+  feature.
+
+## Static verification performed
+
+- Read every file in `features/assets/lib` and `features/assets/test` after the
+  mechanical rename + hand-rewrite passes; confirmed no leftover `Event`/`Calendar`
+  identifiers, `title`/`location`/`timeRange` fields, or `EventTimeRange`/
+  `AssetAcquisitionInfo` references remain (`grep` swept for all of the above; the only
+  matches left were legitimate AppBar/dialog `title:` widget params and doc-comment
+  substrings like "title invariant").
+- Verified `Asset`'s constructor validation (`name`, `category`, `value`, `notes`) and
+  `AssetStatus`'s transition table match what `asset_test.dart`/`asset_status_test.dart`
+  assert, and that `AssetMapper.toEntity`/`toRow` round-trip every field including the
+  three-state status.
+- Verified `AssetsSchema.assetColumns` (11 columns) matches `AssetRow.toMap()`/
+  `fromMap()` key-for-key, matches `CreateAssetsTableMigration`'s `CREATE TABLE` column
+  list, and matches `DemoAssetSeedData`'s raw `INSERT INTO assets (...)` column list and
+  placeholder count.
+- Verified `AssetsModule.registerServices` registers `AssetMapper`, `AssetDao`,
+  `IAssetRepository`, all 8 use cases (including the new `DisposeAssetUseCase`, absent
+  from Calendar's 7), and both ViewModels — no duplicate registrations, and
+  `IAssetDatabaseExecutor`/`IAssetTransactionRunner` are deliberately *not*
+  self-registered (bound instead by `AssetsStorageModule`, matching
+  `CalendarStorageModule`/`NotesStorageModule`).
+- Verified `AssetsRoutes.root` is registered in `AssetsModule.registerRoutes` and
+  threaded consistently through `ShellBranches.build` → `AppRouter.create` → `app.dart`
+  (`_buildAssets`, `onOpenAssets`), and that `ShellBranches.destinations` ordering
+  matches the branch list ordering (Assets between Calendar and Settings in both).
+- Verified `features/assets/lib/assets.dart` barrel exports every symbol the app layer
+  imports (`AssetsModule`, `Asset`/`AssetStatus`/`AssetId`/`AssetPage`/`AssetQuery`,
+  `AssetsPage`, `AssetsRoutes`, both ViewModels + `AssetsDashboardSummary`, the
+  executor/runner pair) and does not export the deleted `AssetAcquisitionInfo`/
+  `asset_time_range.dart`.
+- Confirmed zero `isDemoMode` branching inside `AssetRepository`, `AssetDao`, or any
+  Assets use case.
+- Cross-checked every constructor call site touched by this session's app-layer edits:
+  `DemoModeController`'s four new Assets params against all four call sites
+  (`app_bootstrap.dart`, `app_router_test.dart`, `settings_page_test.dart`,
+  `demo_mode_controller_test.dart`), `AppBootstrap.boot`'s new `assetsStorageFile`
+  param against its three call sites (`app_bootstrap.dart` production default,
+  `app_bootstrap_test.dart`, `home_dashboard_page_test.dart`), and
+  `HomeDashboardPage`'s new required `assetsViewModel` param against its two call sites
+  (`app.dart`, `home_dashboard_page_test.dart`).
+- Checked `git status` before committing — no `.dart_tool`, golden-test `failures/`, or
+  other stray generated files were staged; only intended source/test files.
+- Did not run `flutter analyze`/`flutter test`/`flutter pub get`/`melos`/any build or
+  test command, per instructions — verification above is static/manual only.
+
+## Commit hash
+
+`0c41f99` — `feat(assets): complete Assets feature`
+
+## Technical debt (carried over / introduced)
+
+- Same schema-as-code-only migration status as every other feature
+  (`CreateAssetsTableMigration` not wired to a runtime migration runner).
+- Domain events (`AssetCreatedEvent` etc.) are declared for parity with Calendar/Notes
+  but are not actually raised/dispatched anywhere — this mirrors Calendar's own
+  (pre-existing) gap, not a new one introduced here.
+- `DemoAssetSeedData` uses relative dates (`DateTime.now() - Duration(...)`) rather than
+  fixed dates, mirroring `DemoCalendarSeedData`'s same deviation from Notes/Goals' fixed
+  seed content.
