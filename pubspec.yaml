@@ -16,6 +16,7 @@ workspace:
   - packages/platform_storage
   - features/assets
   - features/calendar
+  - features/documents
   - features/finance
   - features/goals
   - features/habits
