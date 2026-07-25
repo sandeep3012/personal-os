@@ -1,39 +1,71 @@
 import 'package:application/application.dart' show AsyncState;
 import 'package:design_system/design_system.dart';
+import 'package:feature_assets/assets.dart' show AssetsDashboardSummary, AssetsHomeViewModel;
+import 'package:feature_calendar/calendar.dart' show CalendarDashboardSummary, CalendarHomeViewModel;
+import 'package:feature_documents/documents.dart' show DocumentsDashboardSummary, DocumentsHomeViewModel;
 import 'package:feature_finance/finance.dart';
+import 'package:feature_goals/goals.dart' show GoalsDashboardSummary, GoalsHomeViewModel;
+import 'package:feature_habits/habits.dart' show HabitsDashboardSummary, HabitsHomeViewModel;
+import 'package:feature_notes/notes.dart' show NotesDashboardSummary, NotesHomeViewModel;
 import 'package:feature_tasks/tasks.dart' show TasksDashboardSummary, TasksHomeViewModel;
 import 'package:flutter/material.dart';
 
 /// The application's true landing screen (Milestone 5 Part B — TIS §1
-/// Milestone 2 "Home Dashboard"; extended with Tasks in Milestone 7).
+/// Milestone 2 "Home Dashboard"; extended with Tasks in Milestone 7;
+/// extended with Habits thereafter).
 ///
-/// Built entirely from `package:design_system` components. Finance and Tasks
-/// are the only modules with real data today; every other module (Habits,
-/// Goals, Calendar, Documents, Assets, AI) renders a static, visually
-/// polished placeholder [SummaryCard] — no fake repositories, ViewModels,
-/// or business logic are invented for them (Milestone 5 Part B scope).
+/// Built entirely from `package:design_system` components. Finance, Tasks,
+/// Habits, Goals, Notes, Calendar, Assets, and Documents are the only
+/// modules with real data today; every other module (AI) renders a static,
+/// visually polished placeholder [SummaryCard] — no fake repositories,
+/// ViewModels, or business logic are invented for them (Milestone 5 Part B
+/// scope).
 ///
 /// Each module summary renders through [ModuleCard], which isolates its own
 /// loading/error state from the rest of the page (TIS §5 "Loading / Error
-/// isolation") — a failed Finance or Tasks load never blanks the other
-/// module's card or the placeholder sections below.
+/// isolation") — a failed Finance, Tasks, or Habits load never blanks the
+/// other modules' cards or the placeholder sections below.
 final class HomeDashboardPage extends StatefulWidget {
   const HomeDashboardPage({
     super.key,
     required this.financeViewModel,
     required this.tasksViewModel,
+    required this.habitsViewModel,
+    required this.goalsViewModel,
+    required this.notesViewModel,
+    required this.calendarViewModel,
+    required this.assetsViewModel,
+    required this.documentsViewModel,
     this.onOpenFinance,
     this.onOpenAccounts,
     this.onOpenTransactions,
     this.onOpenTasks,
+    this.onOpenHabits,
+    this.onOpenGoals,
+    this.onOpenNotes,
+    this.onOpenCalendar,
+    this.onOpenAssets,
+    this.onOpenDocuments,
   });
 
   final FinanceHomeViewModel financeViewModel;
   final TasksHomeViewModel tasksViewModel;
+  final HabitsHomeViewModel habitsViewModel;
+  final GoalsHomeViewModel goalsViewModel;
+  final NotesHomeViewModel notesViewModel;
+  final CalendarHomeViewModel calendarViewModel;
+  final AssetsHomeViewModel assetsViewModel;
+  final DocumentsHomeViewModel documentsViewModel;
   final VoidCallback? onOpenFinance;
   final VoidCallback? onOpenAccounts;
   final VoidCallback? onOpenTransactions;
   final VoidCallback? onOpenTasks;
+  final VoidCallback? onOpenHabits;
+  final VoidCallback? onOpenGoals;
+  final VoidCallback? onOpenNotes;
+  final VoidCallback? onOpenCalendar;
+  final VoidCallback? onOpenAssets;
+  final VoidCallback? onOpenDocuments;
 
   @override
   State<HomeDashboardPage> createState() => _HomeDashboardPageState();
@@ -45,6 +77,12 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
     super.initState();
     widget.financeViewModel.load();
     widget.tasksViewModel.load();
+    widget.habitsViewModel.load();
+    widget.goalsViewModel.load();
+    widget.notesViewModel.load();
+    widget.calendarViewModel.load();
+    widget.assetsViewModel.load();
+    widget.documentsViewModel.load();
   }
 
   @override
@@ -59,11 +97,26 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('Home')),
       body: ListenableBuilder(
-        listenable: Listenable.merge([widget.financeViewModel, widget.tasksViewModel]),
+        listenable: Listenable.merge([
+          widget.financeViewModel,
+          widget.tasksViewModel,
+          widget.habitsViewModel,
+          widget.goalsViewModel,
+          widget.notesViewModel,
+          widget.calendarViewModel,
+          widget.assetsViewModel,
+          widget.documentsViewModel,
+        ]),
         builder: (context, _) => RefreshIndicator(
           onRefresh: () => Future.wait([
             widget.financeViewModel.refresh(),
             widget.tasksViewModel.refresh(),
+            widget.habitsViewModel.refresh(),
+            widget.goalsViewModel.refresh(),
+            widget.notesViewModel.refresh(),
+            widget.calendarViewModel.refresh(),
+            widget.assetsViewModel.refresh(),
+            widget.documentsViewModel.refresh(),
           ]),
           child: ListView(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
@@ -91,6 +144,72 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
                   ),
                 ),
               ),
+              const SizedBox(height: AppSpacing.md),
+              _entrance(
+                2,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: _HabitsModuleCard(
+                    state: widget.habitsViewModel.state,
+                    onTap: widget.onOpenHabits,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _entrance(
+                2,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: _GoalsModuleCard(
+                    state: widget.goalsViewModel.state,
+                    onTap: widget.onOpenGoals,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _entrance(
+                2,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: _NotesModuleCard(
+                    state: widget.notesViewModel.state,
+                    onTap: widget.onOpenNotes,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _entrance(
+                2,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: _CalendarModuleCard(
+                    state: widget.calendarViewModel.state,
+                    onTap: widget.onOpenCalendar,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _entrance(
+                2,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: _AssetsModuleCard(
+                    state: widget.assetsViewModel.state,
+                    onTap: widget.onOpenAssets,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _entrance(
+                2,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: _DocumentsModuleCard(
+                    state: widget.documentsViewModel.state,
+                    onTap: widget.onOpenDocuments,
+                  ),
+                ),
+              ),
               const SizedBox(height: AppSpacing.lg),
               _entrance(
                 3,
@@ -115,6 +234,12 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
                   onOpenAccounts: widget.onOpenAccounts,
                   onOpenTransactions: widget.onOpenTransactions,
                   onOpenTasks: widget.onOpenTasks,
+                  onOpenHabits: widget.onOpenHabits,
+                  onOpenGoals: widget.onOpenGoals,
+                  onOpenNotes: widget.onOpenNotes,
+                  onOpenCalendar: widget.onOpenCalendar,
+                  onOpenAssets: widget.onOpenAssets,
+                  onOpenDocuments: widget.onOpenDocuments,
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -377,6 +502,322 @@ class _TasksCardBody extends StatelessWidget {
   }
 }
 
+class _HabitsModuleCard extends StatelessWidget {
+  const _HabitsModuleCard({required this.state, this.onTap});
+
+  final AsyncState<HabitsDashboardSummary> state;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semanticColors = theme.extension<AppSemanticColors>();
+    final accent = semanticColors?.moduleAccent('habits') ?? theme.colorScheme.primary;
+
+    return ModuleCard<HabitsDashboardSummary>(
+      icon: Icons.local_fire_department_outlined,
+      accentColor: accent,
+      title: 'Habits',
+      state: state,
+      loadingHeight: 96,
+      onTap: onTap,
+      semanticLabel: 'Habits summary',
+      contentBuilder: (context, data) => _HabitsCardBody(data: data),
+    );
+  }
+}
+
+class _HabitsCardBody extends StatelessWidget {
+  const _HabitsCardBody({required this.data});
+
+  final HabitsDashboardSummary data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: StatCard(
+            icon: Icons.repeat,
+            label: 'Active',
+            value: data.activeCount.toDouble(),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: StatCard(
+            icon: Icons.local_fire_department_outlined,
+            label: 'Completed today',
+            value: data.completedTodayCount.toDouble(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _GoalsModuleCard extends StatelessWidget {
+  const _GoalsModuleCard({required this.state, this.onTap});
+
+  final AsyncState<GoalsDashboardSummary> state;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semanticColors = theme.extension<AppSemanticColors>();
+    final accent = semanticColors?.moduleAccent('goals') ?? theme.colorScheme.primary;
+
+    return ModuleCard<GoalsDashboardSummary>(
+      icon: Icons.flag_outlined,
+      accentColor: accent,
+      title: 'Goals',
+      state: state,
+      loadingHeight: 96,
+      onTap: onTap,
+      semanticLabel: 'Goals summary',
+      contentBuilder: (context, data) => _GoalsCardBody(data: data),
+    );
+  }
+}
+
+class _GoalsCardBody extends StatelessWidget {
+  const _GoalsCardBody({required this.data});
+
+  final GoalsDashboardSummary data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: StatCard(
+            icon: Icons.flag_outlined,
+            label: 'Active',
+            value: data.activeCount.toDouble(),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: StatCard(
+            icon: Icons.emoji_events_outlined,
+            label: 'Completed',
+            value: data.completedCount.toDouble(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NotesModuleCard extends StatelessWidget {
+  const _NotesModuleCard({required this.state, this.onTap});
+
+  final AsyncState<NotesDashboardSummary> state;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semanticColors = theme.extension<AppSemanticColors>();
+    final accent = semanticColors?.moduleAccent('notes') ?? theme.colorScheme.primary;
+
+    return ModuleCard<NotesDashboardSummary>(
+      icon: Icons.note_outlined,
+      accentColor: accent,
+      title: 'Notes',
+      state: state,
+      loadingHeight: 96,
+      onTap: onTap,
+      semanticLabel: 'Notes summary',
+      contentBuilder: (context, data) => _NotesCardBody(data: data),
+    );
+  }
+}
+
+class _NotesCardBody extends StatelessWidget {
+  const _NotesCardBody({required this.data});
+
+  final NotesDashboardSummary data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: StatCard(
+            icon: Icons.note_outlined,
+            label: 'Active',
+            value: data.activeCount.toDouble(),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: StatCard(
+            icon: Icons.archive_outlined,
+            label: 'Archived',
+            value: data.archivedCount.toDouble(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CalendarModuleCard extends StatelessWidget {
+  const _CalendarModuleCard({required this.state, this.onTap});
+
+  final AsyncState<CalendarDashboardSummary> state;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semanticColors = theme.extension<AppSemanticColors>();
+    final accent = semanticColors?.moduleAccent('calendar') ?? theme.colorScheme.primary;
+
+    return ModuleCard<CalendarDashboardSummary>(
+      icon: Icons.calendar_today_outlined,
+      accentColor: accent,
+      title: 'Calendar',
+      state: state,
+      loadingHeight: 96,
+      onTap: onTap,
+      semanticLabel: 'Calendar summary',
+      contentBuilder: (context, data) => _CalendarCardBody(data: data),
+    );
+  }
+}
+
+class _CalendarCardBody extends StatelessWidget {
+  const _CalendarCardBody({required this.data});
+
+  final CalendarDashboardSummary data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: StatCard(
+            icon: Icons.event_outlined,
+            label: 'Upcoming',
+            value: data.upcomingCount.toDouble(),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: StatCard(
+            icon: Icons.archive_outlined,
+            label: 'Archived',
+            value: data.archivedCount.toDouble(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AssetsModuleCard extends StatelessWidget {
+  const _AssetsModuleCard({required this.state, this.onTap});
+
+  final AsyncState<AssetsDashboardSummary> state;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semanticColors = theme.extension<AppSemanticColors>();
+    final accent = semanticColors?.moduleAccent('assets') ?? theme.colorScheme.primary;
+
+    return ModuleCard<AssetsDashboardSummary>(
+      icon: Icons.inventory_2_outlined,
+      accentColor: accent,
+      title: 'Assets',
+      state: state,
+      loadingHeight: 96,
+      onTap: onTap,
+      semanticLabel: 'Assets summary',
+      contentBuilder: (context, data) => _AssetsCardBody(data: data),
+    );
+  }
+}
+
+class _AssetsCardBody extends StatelessWidget {
+  const _AssetsCardBody({required this.data});
+
+  final AssetsDashboardSummary data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: StatCard(
+            icon: Icons.inventory_2_outlined,
+            label: 'Active',
+            value: data.activeCount.toDouble(),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: StatCard(
+            icon: Icons.payments_outlined,
+            label: 'Total value',
+            value: data.totalValue,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DocumentsModuleCard extends StatelessWidget {
+  const _DocumentsModuleCard({required this.state, this.onTap});
+
+  final AsyncState<DocumentsDashboardSummary> state;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semanticColors = theme.extension<AppSemanticColors>();
+    final accent = semanticColors?.moduleAccent('documents') ?? theme.colorScheme.primary;
+
+    return ModuleCard<DocumentsDashboardSummary>(
+      icon: Icons.description_outlined,
+      accentColor: accent,
+      title: 'Documents',
+      state: state,
+      loadingHeight: 96,
+      onTap: onTap,
+      semanticLabel: 'Documents summary',
+      contentBuilder: (context, data) => _DocumentsCardBody(data: data),
+    );
+  }
+}
+
+class _DocumentsCardBody extends StatelessWidget {
+  const _DocumentsCardBody({required this.data});
+
+  final DocumentsDashboardSummary data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: StatCard(
+            icon: Icons.description_outlined,
+            label: 'Active',
+            value: data.activeCount.toDouble(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _MiniStat extends StatelessWidget {
   const _MiniStat({
     required this.icon,
@@ -490,12 +931,24 @@ class _QuickActionsSection extends StatelessWidget {
     this.onOpenAccounts,
     this.onOpenTransactions,
     this.onOpenTasks,
+    this.onOpenHabits,
+    this.onOpenGoals,
+    this.onOpenNotes,
+    this.onOpenCalendar,
+    this.onOpenAssets,
+    this.onOpenDocuments,
   });
 
   final VoidCallback? onOpenFinance;
   final VoidCallback? onOpenAccounts;
   final VoidCallback? onOpenTransactions;
   final VoidCallback? onOpenTasks;
+  final VoidCallback? onOpenHabits;
+  final VoidCallback? onOpenGoals;
+  final VoidCallback? onOpenNotes;
+  final VoidCallback? onOpenCalendar;
+  final VoidCallback? onOpenAssets;
+  final VoidCallback? onOpenDocuments;
 
   @override
   Widget build(BuildContext context) {
@@ -533,6 +986,42 @@ class _QuickActionsSection extends StatelessWidget {
                   label: 'Add Task',
                   onTap: onOpenTasks!,
                 ),
+              if (onOpenHabits != null)
+                QuickActionButton(
+                  icon: Icons.local_fire_department_outlined,
+                  label: 'Log Habit',
+                  onTap: onOpenHabits!,
+                ),
+              if (onOpenGoals != null)
+                QuickActionButton(
+                  icon: Icons.flag_outlined,
+                  label: 'Add Goal',
+                  onTap: onOpenGoals!,
+                ),
+              if (onOpenNotes != null)
+                QuickActionButton(
+                  icon: Icons.note_add_outlined,
+                  label: 'Add Note',
+                  onTap: onOpenNotes!,
+                ),
+              if (onOpenCalendar != null)
+                QuickActionButton(
+                  icon: Icons.event_outlined,
+                  label: 'Add Event',
+                  onTap: onOpenCalendar!,
+                ),
+              if (onOpenAssets != null)
+                QuickActionButton(
+                  icon: Icons.inventory_2_outlined,
+                  label: 'Add Asset',
+                  onTap: onOpenAssets!,
+                ),
+              if (onOpenDocuments != null)
+                QuickActionButton(
+                  icon: Icons.description_outlined,
+                  label: 'Add Document',
+                  onTap: onOpenDocuments!,
+                ),
             ],
           ),
         ),
@@ -558,47 +1047,6 @@ class _PlaceholderModuleGrid extends StatelessWidget {
         semanticColors?.moduleAccent(moduleId) ?? theme.colorScheme.primary;
 
     final cards = <Widget>[
-      SummaryCard(
-        icon: Icons.repeat,
-        accentColor: accentFor('habits'),
-        title: 'Habits',
-        body: const _ComingSoonBody(message: 'Habit tracking is coming soon'),
-      ),
-      SummaryCard(
-        icon: Icons.flag_outlined,
-        accentColor: accentFor('goals'),
-        title: 'Goals',
-        body: Row(
-          children: [
-            const ProgressRing(progress: 0, label: '0%'),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Text(
-                'No goals yet',
-                style: theme.textTheme.bodyMedium,
-              ),
-            ),
-          ],
-        ),
-      ),
-      SummaryCard(
-        icon: Icons.calendar_today_outlined,
-        accentColor: accentFor('calendar'),
-        title: 'Upcoming',
-        body: const _ComingSoonBody(message: 'No upcoming reminders or events'),
-      ),
-      SummaryCard(
-        icon: Icons.description_outlined,
-        accentColor: accentFor('documents'),
-        title: 'Documents',
-        body: const _ComingSoonBody(message: 'Document storage is coming soon'),
-      ),
-      SummaryCard(
-        icon: Icons.savings_outlined,
-        accentColor: accentFor('assets'),
-        title: 'Assets',
-        body: const _ComingSoonBody(message: 'Asset tracking is coming soon'),
-      ),
       SummaryCard(
         icon: Icons.auto_awesome_outlined,
         accentColor: accentFor('ai'),

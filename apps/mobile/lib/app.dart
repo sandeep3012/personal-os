@@ -1,6 +1,12 @@
 import 'dart:async';
 
+import 'package:feature_assets/assets.dart';
+import 'package:feature_calendar/calendar.dart';
+import 'package:feature_documents/documents.dart';
 import 'package:feature_finance/finance.dart';
+import 'package:feature_goals/goals.dart';
+import 'package:feature_habits/habits.dart';
+import 'package:feature_notes/notes.dart';
 import 'package:feature_sample/sample.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:flutter/material.dart';
@@ -74,6 +80,12 @@ class _PersonalOsAppState extends State<PersonalOsApp>
       homeBuilder: _buildHome,
       settingsBuilder: _buildSettings,
       tasksBuilder: _buildTasks,
+      habitsBuilder: _buildHabits,
+      goalsBuilder: _buildGoals,
+      notesBuilder: _buildNotes,
+      calendarBuilder: _buildCalendar,
+      assetsBuilder: _buildAssets,
+      documentsBuilder: _buildDocuments,
       demoModeController: _demoModeController,
       financeRoutes: _buildFinanceRoutes(),
       otherTopLevelRoutes: _buildOtherTopLevelRoutes(),
@@ -91,11 +103,23 @@ class _PersonalOsAppState extends State<PersonalOsApp>
       HomeDashboardPage(
         financeViewModel: widget.bootstrap.registry.get<FinanceHomeViewModel>(),
         tasksViewModel: widget.bootstrap.registry.get<TasksHomeViewModel>(),
+        habitsViewModel: widget.bootstrap.registry.get<HabitsHomeViewModel>(),
+        goalsViewModel: widget.bootstrap.registry.get<GoalsHomeViewModel>(),
+        notesViewModel: widget.bootstrap.registry.get<NotesHomeViewModel>(),
+        calendarViewModel: widget.bootstrap.registry.get<CalendarHomeViewModel>(),
+        assetsViewModel: widget.bootstrap.registry.get<AssetsHomeViewModel>(),
+        documentsViewModel: widget.bootstrap.registry.get<DocumentsHomeViewModel>(),
         onOpenFinance: () => context.goNamed(FinanceRoutes.root.name),
         onOpenAccounts: () => context.goNamed(FinanceRoutes.accounts.name),
         onOpenTransactions: () =>
             context.goNamed(FinanceRoutes.transactions.name),
         onOpenTasks: () => context.goNamed(TasksRoutes.root.name),
+        onOpenHabits: () => context.goNamed(HabitsRoutes.root.name),
+        onOpenGoals: () => context.goNamed(GoalsRoutes.root.name),
+        onOpenNotes: () => context.goNamed(NotesRoutes.root.name),
+        onOpenCalendar: () => context.goNamed(CalendarRoutes.root.name),
+        onOpenAssets: () => context.goNamed(AssetsRoutes.root.name),
+        onOpenDocuments: () => context.goNamed(DocumentsRoutes.root.name),
       );
 
   /// Builds the Settings branch's landing screen — the real [SettingsPage]
@@ -107,6 +131,36 @@ class _PersonalOsAppState extends State<PersonalOsApp>
   /// (Milestone 7), mirroring how Finance's routes are built.
   Widget _buildTasks(BuildContext context, GoRouterState state) =>
       TasksPage(viewModel: widget.bootstrap.registry.get<TasksViewModel>());
+
+  /// Builds the Habits branch's landing screen — the real [HabitsPage],
+  /// mirroring how Tasks' routes are built.
+  Widget _buildHabits(BuildContext context, GoRouterState state) =>
+      HabitsPage(viewModel: widget.bootstrap.registry.get<HabitsViewModel>());
+
+  /// Builds the Goals branch's landing screen — the real [GoalsPage],
+  /// mirroring how Habits' routes are built.
+  Widget _buildGoals(BuildContext context, GoRouterState state) =>
+      GoalsPage(viewModel: widget.bootstrap.registry.get<GoalsViewModel>());
+
+  /// Builds the Notes branch's landing screen — the real [NotesPage],
+  /// mirroring how Goals' routes are built.
+  Widget _buildNotes(BuildContext context, GoRouterState state) =>
+      NotesPage(viewModel: widget.bootstrap.registry.get<NotesViewModel>());
+
+  /// Builds the Calendar branch's landing screen — the real [CalendarPage],
+  /// mirroring how Notes' routes are built.
+  Widget _buildCalendar(BuildContext context, GoRouterState state) =>
+      CalendarPage(viewModel: widget.bootstrap.registry.get<CalendarViewModel>());
+
+  /// Builds the Assets branch's landing screen — the real [AssetsPage],
+  /// mirroring how Calendar's routes are built.
+  Widget _buildAssets(BuildContext context, GoRouterState state) =>
+      AssetsPage(viewModel: widget.bootstrap.registry.get<AssetsViewModel>());
+
+  /// Builds the Documents branch's landing screen — the real [DocumentsPage],
+  /// mirroring how Assets' routes are built.
+  Widget _buildDocuments(BuildContext context, GoRouterState state) =>
+      DocumentsPage(viewModel: widget.bootstrap.registry.get<DocumentsViewModel>());
 
   /// Builds the first-run onboarding route (Milestone 6 Part B) — a
   /// top-level route outside the shell, exactly like [AppRouter.diagnosticsPath].

@@ -1,8 +1,20 @@
+import 'package:feature_assets/assets.dart';
+import 'package:feature_calendar/calendar.dart';
+import 'package:feature_documents/documents.dart';
 import 'package:feature_finance/finance.dart';
+import 'package:feature_goals/goals.dart';
+import 'package:feature_habits/habits.dart';
+import 'package:feature_notes/notes.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:personal_os/app/demo/demo_mode_controller.dart';
+import 'package:personal_os/app/demo/switchable_asset_storage.dart';
+import 'package:personal_os/app/demo/switchable_calendar_storage.dart';
+import 'package:personal_os/app/demo/switchable_document_storage.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
+import 'package:personal_os/app/demo/switchable_goal_storage.dart';
+import 'package:personal_os/app/demo/switchable_habit_storage.dart';
+import 'package:personal_os/app/demo/switchable_note_storage.dart';
 import 'package:personal_os/app/demo/switchable_task_storage.dart';
 
 const _ws = 'ws-demo-test';
@@ -28,11 +40,35 @@ final class _Harness {
       : realExecutor = InMemoryFinanceDatabaseExecutor(),
         realRunner = InMemoryFinanceTransactionRunner(InMemoryFinanceDatabaseExecutor()),
         realTaskExecutor = InMemoryTaskDatabaseExecutor(),
-        realTaskRunner = InMemoryTaskTransactionRunner(InMemoryTaskDatabaseExecutor()) {
+        realTaskRunner = InMemoryTaskTransactionRunner(InMemoryTaskDatabaseExecutor()),
+        realHabitExecutor = InMemoryHabitDatabaseExecutor(),
+        realHabitRunner = InMemoryHabitTransactionRunner(InMemoryHabitDatabaseExecutor()),
+        realGoalExecutor = InMemoryGoalDatabaseExecutor(),
+        realGoalRunner = InMemoryGoalTransactionRunner(InMemoryGoalDatabaseExecutor()),
+        realNoteExecutor = InMemoryNoteDatabaseExecutor(),
+        realNoteRunner = InMemoryNoteTransactionRunner(InMemoryNoteDatabaseExecutor()),
+        realCalendarExecutor = InMemoryEventDatabaseExecutor(),
+        realCalendarRunner = InMemoryEventTransactionRunner(InMemoryEventDatabaseExecutor()),
+        realAssetExecutor = InMemoryAssetDatabaseExecutor(),
+        realAssetRunner = InMemoryAssetTransactionRunner(InMemoryAssetDatabaseExecutor()),
+        realDocumentExecutor = InMemoryDocumentDatabaseExecutor(),
+        realDocumentRunner = InMemoryDocumentTransactionRunner(InMemoryDocumentDatabaseExecutor()) {
     executor = SwitchableFinanceDatabaseExecutor(realExecutor);
     runner = SwitchableFinanceTransactionRunner(realRunner);
     taskExecutor = SwitchableTaskDatabaseExecutor(realTaskExecutor);
     taskRunner = SwitchableTaskTransactionRunner(realTaskRunner);
+    habitExecutor = SwitchableHabitDatabaseExecutor(realHabitExecutor);
+    habitRunner = SwitchableHabitTransactionRunner(realHabitRunner);
+    goalExecutor = SwitchableGoalDatabaseExecutor(realGoalExecutor);
+    goalRunner = SwitchableGoalTransactionRunner(realGoalRunner);
+    noteExecutor = SwitchableNoteDatabaseExecutor(realNoteExecutor);
+    noteRunner = SwitchableNoteTransactionRunner(realNoteRunner);
+    calendarExecutor = SwitchableEventDatabaseExecutor(realCalendarExecutor);
+    calendarRunner = SwitchableEventTransactionRunner(realCalendarRunner);
+    assetExecutor = SwitchableAssetDatabaseExecutor(realAssetExecutor);
+    assetRunner = SwitchableAssetTransactionRunner(realAssetRunner);
+    documentExecutor = SwitchableDocumentDatabaseExecutor(realDocumentExecutor);
+    documentRunner = SwitchableDocumentTransactionRunner(realDocumentRunner);
     controller = DemoModeController(
       financeExecutor: executor,
       financeRunner: runner,
@@ -42,6 +78,30 @@ final class _Harness {
       taskRunner: taskRunner,
       realTaskExecutor: realTaskExecutor,
       realTaskRunner: realTaskRunner,
+      habitExecutor: habitExecutor,
+      habitRunner: habitRunner,
+      realHabitExecutor: realHabitExecutor,
+      realHabitRunner: realHabitRunner,
+      goalExecutor: goalExecutor,
+      goalRunner: goalRunner,
+      realGoalExecutor: realGoalExecutor,
+      realGoalRunner: realGoalRunner,
+      noteExecutor: noteExecutor,
+      noteRunner: noteRunner,
+      realNoteExecutor: realNoteExecutor,
+      realNoteRunner: realNoteRunner,
+      calendarExecutor: calendarExecutor,
+      calendarRunner: calendarRunner,
+      realCalendarExecutor: realCalendarExecutor,
+      realCalendarRunner: realCalendarRunner,
+      assetExecutor: assetExecutor,
+      assetRunner: assetRunner,
+      realAssetExecutor: realAssetExecutor,
+      realAssetRunner: realAssetRunner,
+      documentExecutor: documentExecutor,
+      documentRunner: documentRunner,
+      realDocumentExecutor: realDocumentExecutor,
+      realDocumentRunner: realDocumentRunner,
       workspaceId: _ws,
     );
   }
@@ -50,10 +110,34 @@ final class _Harness {
   final InMemoryFinanceTransactionRunner realRunner;
   final InMemoryTaskDatabaseExecutor realTaskExecutor;
   final InMemoryTaskTransactionRunner realTaskRunner;
+  final InMemoryHabitDatabaseExecutor realHabitExecutor;
+  final InMemoryHabitTransactionRunner realHabitRunner;
+  final InMemoryGoalDatabaseExecutor realGoalExecutor;
+  final InMemoryGoalTransactionRunner realGoalRunner;
+  final InMemoryNoteDatabaseExecutor realNoteExecutor;
+  final InMemoryNoteTransactionRunner realNoteRunner;
+  final InMemoryEventDatabaseExecutor realCalendarExecutor;
+  final InMemoryEventTransactionRunner realCalendarRunner;
+  final InMemoryAssetDatabaseExecutor realAssetExecutor;
+  final InMemoryAssetTransactionRunner realAssetRunner;
+  final InMemoryDocumentDatabaseExecutor realDocumentExecutor;
+  final InMemoryDocumentTransactionRunner realDocumentRunner;
   late final SwitchableFinanceDatabaseExecutor executor;
   late final SwitchableFinanceTransactionRunner runner;
   late final SwitchableTaskDatabaseExecutor taskExecutor;
   late final SwitchableTaskTransactionRunner taskRunner;
+  late final SwitchableHabitDatabaseExecutor habitExecutor;
+  late final SwitchableHabitTransactionRunner habitRunner;
+  late final SwitchableGoalDatabaseExecutor goalExecutor;
+  late final SwitchableGoalTransactionRunner goalRunner;
+  late final SwitchableNoteDatabaseExecutor noteExecutor;
+  late final SwitchableNoteTransactionRunner noteRunner;
+  late final SwitchableEventDatabaseExecutor calendarExecutor;
+  late final SwitchableEventTransactionRunner calendarRunner;
+  late final SwitchableAssetDatabaseExecutor assetExecutor;
+  late final SwitchableAssetTransactionRunner assetRunner;
+  late final SwitchableDocumentDatabaseExecutor documentExecutor;
+  late final SwitchableDocumentTransactionRunner documentRunner;
   late final DemoModeController controller;
 }
 

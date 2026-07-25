@@ -14,7 +14,12 @@ workspace:
   - packages/platform_core
   - packages/platform_runtime
   - packages/platform_storage
+  - features/assets
+  - features/calendar
   - features/finance
+  - features/goals
+  - features/habits
+  - features/notes
   - features/sample
   - features/tasks
 

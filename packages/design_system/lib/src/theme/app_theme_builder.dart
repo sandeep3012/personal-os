@@ -212,6 +212,7 @@ abstract final class AppThemeBuilder {
         'tasks': isDark ? const Color(0xFFD7AEFB) : const Color(0xFF8430CE),
         'habits': isDark ? const Color(0xFFFDBA74) : const Color(0xFFB7590E),
         'goals': isDark ? const Color(0xFF80CBC4) : const Color(0xFF00695C),
+        'notes': isDark ? const Color(0xFFFFF59D) : const Color(0xFFF9A825),
         'calendar': isDark ? const Color(0xFFF28B82) : const Color(0xFFC5221F),
         'documents': isDark ? const Color(0xFFBCAAA4) : const Color(0xFF6D4C41),
         'assets': isDark ? const Color(0xFFAEC6FA) : const Color(0xFF3949AB),

@@ -1,6 +1,12 @@
 import 'dart:io';
 
+import 'package:feature_assets/assets.dart';
+import 'package:feature_calendar/calendar.dart';
+import 'package:feature_documents/documents.dart';
 import 'package:feature_finance/finance.dart';
+import 'package:feature_goals/goals.dart';
+import 'package:feature_habits/habits.dart';
+import 'package:feature_notes/notes.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_core/config/app_config.dart';
 import 'package:platform_core/environment/build_environment.dart';
@@ -23,6 +29,36 @@ File _tempTasksFile() => File(
       '/tasks_data.json',
     );
 
+File _tempHabitsFile() => File(
+      '${Directory.systemTemp.createTempSync('habits_bootstrap_test_').path}'
+      '/habits_data.json',
+    );
+
+File _tempGoalsFile() => File(
+      '${Directory.systemTemp.createTempSync('goals_bootstrap_test_').path}'
+      '/goals_data.json',
+    );
+
+File _tempNotesFile() => File(
+      '${Directory.systemTemp.createTempSync('notes_bootstrap_test_').path}'
+      '/notes_data.json',
+    );
+
+File _tempCalendarFile() => File(
+      '${Directory.systemTemp.createTempSync('calendar_bootstrap_test_').path}'
+      '/calendar_data.json',
+    );
+
+File _tempAssetsFile() => File(
+      '${Directory.systemTemp.createTempSync('assets_bootstrap_test_').path}'
+      '/assets_data.json',
+    );
+
+File _tempDocumentsFile() => File(
+      '${Directory.systemTemp.createTempSync('documents_bootstrap_test_').path}'
+      '/documents_data.json',
+    );
+
 File _tempOnboardingFile() => File(
       '${Directory.systemTemp.createTempSync('onboarding_bootstrap_test_').path}'
       '/onboarding_status.json',
@@ -31,11 +67,23 @@ File _tempOnboardingFile() => File(
 Future<AppBootstrap> _boot({
   File? financeStorageFile,
   File? tasksStorageFile,
+  File? habitsStorageFile,
+  File? goalsStorageFile,
+  File? notesStorageFile,
+  File? calendarStorageFile,
+  File? assetsStorageFile,
+  File? documentsStorageFile,
   File? onboardingStatusFile,
 }) =>
     AppBootstrap.boot(
       financeStorageFile: financeStorageFile ?? _tempFinanceFile(),
       tasksStorageFile: tasksStorageFile ?? _tempTasksFile(),
+      habitsStorageFile: habitsStorageFile ?? _tempHabitsFile(),
+      goalsStorageFile: goalsStorageFile ?? _tempGoalsFile(),
+      notesStorageFile: notesStorageFile ?? _tempNotesFile(),
+      calendarStorageFile: calendarStorageFile ?? _tempCalendarFile(),
+      assetsStorageFile: assetsStorageFile ?? _tempAssetsFile(),
+      documentsStorageFile: documentsStorageFile ?? _tempDocumentsFile(),
       onboardingStatusFile: onboardingStatusFile ?? _tempOnboardingFile(),
     );
 
@@ -143,6 +191,264 @@ void main() {
           'file-backed persistence layer', () async {
         final bootstrap = await _boot();
         final viewModel = bootstrap.registry.get<AccountsViewModel>();
+
+        await expectLater(viewModel.load(), completes);
+        expect(viewModel.state.isError, isFalse);
+
+        await bootstrap.shutdown();
+      });
+    });
+
+    group('Habits persistence binding', () {
+      test('IHabitDatabaseExecutor is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<IHabitDatabaseExecutor>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('IHabitTransactionRunner is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<IHabitTransactionRunner>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('every Habits ViewModel resolves without throwing', () async {
+        final bootstrap = await _boot();
+        expect(
+          () {
+            bootstrap.registry.get<HabitsHomeViewModel>();
+            bootstrap.registry.get<HabitsViewModel>();
+          },
+          returnsNormally,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('GetHabitsUseCase resolves and executes against the '
+          'file-backed persistence layer', () async {
+        final bootstrap = await _boot();
+        final viewModel = bootstrap.registry.get<HabitsViewModel>();
+
+        await expectLater(viewModel.load(), completes);
+        expect(viewModel.state.isError, isFalse);
+
+        await bootstrap.shutdown();
+      });
+    });
+
+    group('Goals persistence binding', () {
+      test('IGoalDatabaseExecutor is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<IGoalDatabaseExecutor>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('IGoalTransactionRunner is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<IGoalTransactionRunner>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('every Goals ViewModel resolves without throwing', () async {
+        final bootstrap = await _boot();
+        expect(
+          () {
+            bootstrap.registry.get<GoalsHomeViewModel>();
+            bootstrap.registry.get<GoalsViewModel>();
+          },
+          returnsNormally,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('GetGoalsUseCase resolves and executes against the '
+          'file-backed persistence layer', () async {
+        final bootstrap = await _boot();
+        final viewModel = bootstrap.registry.get<GoalsViewModel>();
+
+        await expectLater(viewModel.load(), completes);
+        expect(viewModel.state.isError, isFalse);
+
+        await bootstrap.shutdown();
+      });
+    });
+
+    group('Notes persistence binding', () {
+      test('INoteDatabaseExecutor is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<INoteDatabaseExecutor>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('INoteTransactionRunner is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<INoteTransactionRunner>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('every Notes ViewModel resolves without throwing', () async {
+        final bootstrap = await _boot();
+        expect(
+          () {
+            bootstrap.registry.get<NotesHomeViewModel>();
+            bootstrap.registry.get<NotesViewModel>();
+          },
+          returnsNormally,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('GetNotesUseCase resolves and executes against the '
+          'file-backed persistence layer', () async {
+        final bootstrap = await _boot();
+        final viewModel = bootstrap.registry.get<NotesViewModel>();
+
+        await expectLater(viewModel.load(), completes);
+        expect(viewModel.state.isError, isFalse);
+
+        await bootstrap.shutdown();
+      });
+    });
+
+    group('Calendar persistence binding', () {
+      test('IEventDatabaseExecutor is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<IEventDatabaseExecutor>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('IEventTransactionRunner is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<IEventTransactionRunner>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('every Calendar ViewModel resolves without throwing', () async {
+        final bootstrap = await _boot();
+        expect(
+          () {
+            bootstrap.registry.get<CalendarHomeViewModel>();
+            bootstrap.registry.get<CalendarViewModel>();
+          },
+          returnsNormally,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('GetEventsUseCase resolves and executes against the '
+          'file-backed persistence layer', () async {
+        final bootstrap = await _boot();
+        final viewModel = bootstrap.registry.get<CalendarViewModel>();
+
+        await expectLater(viewModel.load(), completes);
+        expect(viewModel.state.isError, isFalse);
+
+        await bootstrap.shutdown();
+      });
+    });
+
+    group('Assets persistence binding', () {
+      test('IAssetDatabaseExecutor is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<IAssetDatabaseExecutor>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('IAssetTransactionRunner is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<IAssetTransactionRunner>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('every Assets ViewModel resolves without throwing', () async {
+        final bootstrap = await _boot();
+        expect(
+          () {
+            bootstrap.registry.get<AssetsHomeViewModel>();
+            bootstrap.registry.get<AssetsViewModel>();
+          },
+          returnsNormally,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('GetAssetsUseCase resolves and executes against the '
+          'file-backed persistence layer', () async {
+        final bootstrap = await _boot();
+        final viewModel = bootstrap.registry.get<AssetsViewModel>();
+
+        await expectLater(viewModel.load(), completes);
+        expect(viewModel.state.isError, isFalse);
+
+        await bootstrap.shutdown();
+      });
+    });
+
+    group('Documents persistence binding', () {
+      test('IDocumentDatabaseExecutor is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<IDocumentDatabaseExecutor>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('IDocumentTransactionRunner is registered after boot', () async {
+        final bootstrap = await _boot();
+        expect(
+          bootstrap.registry.isRegistered<IDocumentTransactionRunner>(),
+          isTrue,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('every Documents ViewModel resolves without throwing', () async {
+        final bootstrap = await _boot();
+        expect(
+          () {
+            bootstrap.registry.get<DocumentsHomeViewModel>();
+            bootstrap.registry.get<DocumentsViewModel>();
+          },
+          returnsNormally,
+        );
+        await bootstrap.shutdown();
+      });
+
+      test('GetDocumentsUseCase resolves and executes against the '
+          'file-backed persistence layer', () async {
+        final bootstrap = await _boot();
+        final viewModel = bootstrap.registry.get<DocumentsViewModel>();
 
         await expectLater(viewModel.load(), completes);
         expect(viewModel.state.isError, isFalse);

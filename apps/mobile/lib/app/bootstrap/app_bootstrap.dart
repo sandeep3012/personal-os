@@ -1,7 +1,13 @@
 import 'dart:io';
 
 import 'package:application/application.dart';
+import 'package:feature_assets/assets.dart';
+import 'package:feature_calendar/calendar.dart';
+import 'package:feature_documents/documents.dart';
 import 'package:feature_finance/finance.dart';
+import 'package:feature_goals/goals.dart';
+import 'package:feature_habits/habits.dart';
+import 'package:feature_notes/notes.dart';
 import 'package:feature_sample/sample.dart';
 import 'package:feature_tasks/tasks.dart';
 import 'package:path_provider/path_provider.dart';
@@ -10,11 +16,23 @@ import 'package:platform_core/di/i_service_locator.dart';
 import 'package:platform_core/logging/i_logger.dart';
 import 'package:platform_runtime/bootstrap/runtime_bootstrap.dart';
 import 'package:personal_os/app/bootstrap/app_module.dart';
+import 'package:personal_os/app/bootstrap/assets_storage_module.dart';
+import 'package:personal_os/app/bootstrap/calendar_storage_module.dart';
+import 'package:personal_os/app/bootstrap/documents_storage_module.dart';
 import 'package:personal_os/app/bootstrap/finance_storage_module.dart';
+import 'package:personal_os/app/bootstrap/goals_storage_module.dart';
+import 'package:personal_os/app/bootstrap/habits_storage_module.dart';
+import 'package:personal_os/app/bootstrap/notes_storage_module.dart';
 import 'package:personal_os/app/bootstrap/tasks_storage_module.dart';
 import 'package:personal_os/app/demo/demo_mode_controller.dart';
 import 'package:personal_os/app/demo/demo_module.dart';
+import 'package:personal_os/app/demo/switchable_asset_storage.dart';
+import 'package:personal_os/app/demo/switchable_calendar_storage.dart';
+import 'package:personal_os/app/demo/switchable_document_storage.dart';
 import 'package:personal_os/app/demo/switchable_finance_storage.dart';
+import 'package:personal_os/app/demo/switchable_goal_storage.dart';
+import 'package:personal_os/app/demo/switchable_habit_storage.dart';
+import 'package:personal_os/app/demo/switchable_note_storage.dart';
 import 'package:personal_os/app/demo/switchable_task_storage.dart';
 import 'package:personal_os/app/onboarding/onboarding_module.dart';
 import 'package:personal_os/app/onboarding/onboarding_status_store.dart';
@@ -116,6 +134,12 @@ final class AppBootstrap {
   static Future<AppBootstrap> boot({
     File? financeStorageFile,
     File? tasksStorageFile,
+    File? habitsStorageFile,
+    File? goalsStorageFile,
+    File? notesStorageFile,
+    File? calendarStorageFile,
+    File? assetsStorageFile,
+    File? documentsStorageFile,
     File? onboardingStatusFile,
   }) async {
     final financeExecutor = await FileBackedFinanceDatabaseExecutor.open(
@@ -128,16 +152,61 @@ final class AppBootstrap {
     );
     final realTaskRunner = FileBackedTaskTransactionRunner(taskExecutor);
 
-    // The switchable pairs are what FinanceStorageModule/TasksStorageModule
-    // actually bind — every Finance/Tasks repository resolves these
-    // instances for the app's lifetime. DemoModeController swaps each pair's
-    // internal delegate between its real (file-backed) executor and a fresh
-    // in-memory demo one; nothing downstream needs to know a swap ever
-    // happens (Milestone 6 Part A; extended to Tasks in Milestone 7).
+    final habitExecutor = await FileBackedHabitDatabaseExecutor.open(
+      habitsStorageFile ?? await _defaultHabitsStorageFile(),
+    );
+    final realHabitRunner = FileBackedHabitTransactionRunner(habitExecutor);
+
+    final goalExecutor = await FileBackedGoalDatabaseExecutor.open(
+      goalsStorageFile ?? await _defaultGoalsStorageFile(),
+    );
+    final realGoalRunner = FileBackedGoalTransactionRunner(goalExecutor);
+
+    final noteExecutor = await FileBackedNoteDatabaseExecutor.open(
+      notesStorageFile ?? await _defaultNotesStorageFile(),
+    );
+    final realNoteRunner = FileBackedNoteTransactionRunner(noteExecutor);
+
+    final calendarExecutor = await FileBackedEventDatabaseExecutor.open(
+      calendarStorageFile ?? await _defaultCalendarStorageFile(),
+    );
+    final realCalendarRunner = FileBackedEventTransactionRunner(calendarExecutor);
+
+    final assetExecutor = await FileBackedAssetDatabaseExecutor.open(
+      assetsStorageFile ?? await _defaultAssetsStorageFile(),
+    );
+    final realAssetRunner = FileBackedAssetTransactionRunner(assetExecutor);
+
+    final documentExecutor = await FileBackedDocumentDatabaseExecutor.open(
+      documentsStorageFile ?? await _defaultDocumentsStorageFile(),
+    );
+    final realDocumentRunner = FileBackedDocumentTransactionRunner(documentExecutor);
+
+    // The switchable pairs are what FinanceStorageModule/TasksStorageModule/
+    // HabitsStorageModule actually bind — every Finance/Tasks/Habits
+    // repository resolves these instances for the app's lifetime.
+    // DemoModeController swaps each pair's internal delegate between its
+    // real (file-backed) executor and a fresh in-memory demo one; nothing
+    // downstream needs to know a swap ever happens (Milestone 6 Part A;
+    // extended to Tasks in Milestone 7; extended to Habits thereafter).
     final switchableFinanceExecutor = SwitchableFinanceDatabaseExecutor(financeExecutor);
     final switchableFinanceRunner = SwitchableFinanceTransactionRunner(realFinanceRunner);
     final switchableTaskExecutor = SwitchableTaskDatabaseExecutor(taskExecutor);
     final switchableTaskRunner = SwitchableTaskTransactionRunner(realTaskRunner);
+    final switchableHabitExecutor = SwitchableHabitDatabaseExecutor(habitExecutor);
+    final switchableHabitRunner = SwitchableHabitTransactionRunner(realHabitRunner);
+    final switchableGoalExecutor = SwitchableGoalDatabaseExecutor(goalExecutor);
+    final switchableGoalRunner = SwitchableGoalTransactionRunner(realGoalRunner);
+    final switchableNoteExecutor = SwitchableNoteDatabaseExecutor(noteExecutor);
+    final switchableNoteRunner = SwitchableNoteTransactionRunner(realNoteRunner);
+    final switchableCalendarExecutor = SwitchableEventDatabaseExecutor(calendarExecutor);
+    final switchableCalendarRunner = SwitchableEventTransactionRunner(realCalendarRunner);
+    final switchableAssetExecutor = SwitchableAssetDatabaseExecutor(assetExecutor);
+    final switchableAssetRunner = SwitchableAssetTransactionRunner(realAssetRunner);
+    final switchableDocumentExecutor =
+        SwitchableDocumentDatabaseExecutor(documentExecutor);
+    final switchableDocumentRunner =
+        SwitchableDocumentTransactionRunner(realDocumentRunner);
     final demoModeController = DemoModeController(
       financeExecutor: switchableFinanceExecutor,
       financeRunner: switchableFinanceRunner,
@@ -147,6 +216,30 @@ final class AppBootstrap {
       taskRunner: switchableTaskRunner,
       realTaskExecutor: taskExecutor,
       realTaskRunner: realTaskRunner,
+      habitExecutor: switchableHabitExecutor,
+      habitRunner: switchableHabitRunner,
+      realHabitExecutor: habitExecutor,
+      realHabitRunner: realHabitRunner,
+      goalExecutor: switchableGoalExecutor,
+      goalRunner: switchableGoalRunner,
+      realGoalExecutor: goalExecutor,
+      realGoalRunner: realGoalRunner,
+      noteExecutor: switchableNoteExecutor,
+      noteRunner: switchableNoteRunner,
+      realNoteExecutor: noteExecutor,
+      realNoteRunner: realNoteRunner,
+      calendarExecutor: switchableCalendarExecutor,
+      calendarRunner: switchableCalendarRunner,
+      realCalendarExecutor: calendarExecutor,
+      realCalendarRunner: realCalendarRunner,
+      assetExecutor: switchableAssetExecutor,
+      assetRunner: switchableAssetRunner,
+      realAssetExecutor: assetExecutor,
+      realAssetRunner: realAssetRunner,
+      documentExecutor: switchableDocumentExecutor,
+      documentRunner: switchableDocumentRunner,
+      realDocumentExecutor: documentExecutor,
+      realDocumentRunner: realDocumentRunner,
       workspaceId: WorkspaceContext.defaultWorkspaceId,
     );
 
@@ -168,6 +261,36 @@ final class AppBootstrap {
         runner: switchableTaskRunner,
       ))
       ..addModule(const TasksModule())                          // installs the Tasks feature
+      ..addModule(HabitsStorageModule(                           // binds Habits' persistence
+        executor: switchableHabitExecutor,
+        runner: switchableHabitRunner,
+      ))
+      ..addModule(const HabitsModule())                         // installs the Habits feature
+      ..addModule(GoalsStorageModule(                            // binds Goals' persistence
+        executor: switchableGoalExecutor,
+        runner: switchableGoalRunner,
+      ))
+      ..addModule(const GoalsModule())                          // installs the Goals feature
+      ..addModule(NotesStorageModule(                            // binds Notes' persistence
+        executor: switchableNoteExecutor,
+        runner: switchableNoteRunner,
+      ))
+      ..addModule(const NotesModule())                          // installs the Notes feature
+      ..addModule(CalendarStorageModule(                         // binds Calendar's persistence
+        executor: switchableCalendarExecutor,
+        runner: switchableCalendarRunner,
+      ))
+      ..addModule(const CalendarModule())                       // installs the Calendar feature
+      ..addModule(AssetsStorageModule(                           // binds Assets' persistence
+        executor: switchableAssetExecutor,
+        runner: switchableAssetRunner,
+      ))
+      ..addModule(const AssetsModule())                         // installs the Assets feature
+      ..addModule(DocumentsStorageModule(                        // binds Documents' persistence
+        executor: switchableDocumentExecutor,
+        runner: switchableDocumentRunner,
+      ))
+      ..addModule(const DocumentsModule())                      // installs the Documents feature
       ..addModule(DemoModule(controller: demoModeController))    // Demo Mode management (Milestone 6)
       ..addModule(OnboardingModule(store: onboardingStore))      // first-run status (Milestone 6)
       ..addModule(const SampleModule());                        // validates Feature Framework
@@ -214,6 +337,42 @@ final class AppBootstrap {
   static Future<File> _defaultTasksStorageFile() async {
     final directory = await getApplicationDocumentsDirectory();
     return File('${directory.path}/tasks_data.json');
+  }
+
+  /// The production Habits storage file: `<app documents dir>/habits_data.json`.
+  static Future<File> _defaultHabitsStorageFile() async {
+    final directory = await getApplicationDocumentsDirectory();
+    return File('${directory.path}/habits_data.json');
+  }
+
+  /// The production Goals storage file: `<app documents dir>/goals_data.json`.
+  static Future<File> _defaultGoalsStorageFile() async {
+    final directory = await getApplicationDocumentsDirectory();
+    return File('${directory.path}/goals_data.json');
+  }
+
+  /// The production Notes storage file: `<app documents dir>/notes_data.json`.
+  static Future<File> _defaultNotesStorageFile() async {
+    final directory = await getApplicationDocumentsDirectory();
+    return File('${directory.path}/notes_data.json');
+  }
+
+  /// The production Calendar storage file: `<app documents dir>/calendar_data.json`.
+  static Future<File> _defaultCalendarStorageFile() async {
+    final directory = await getApplicationDocumentsDirectory();
+    return File('${directory.path}/calendar_data.json');
+  }
+
+  /// The production Assets storage file: `<app documents dir>/assets_data.json`.
+  static Future<File> _defaultAssetsStorageFile() async {
+    final directory = await getApplicationDocumentsDirectory();
+    return File('${directory.path}/assets_data.json');
+  }
+
+  /// The production Documents storage file: `<app documents dir>/documents_data.json`.
+  static Future<File> _defaultDocumentsStorageFile() async {
+    final directory = await getApplicationDocumentsDirectory();
+    return File('${directory.path}/documents_data.json');
   }
 
   /// The production onboarding status file: `<app documents dir>/onboarding_status.json`.

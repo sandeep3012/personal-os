@@ -31,6 +31,24 @@ abstract final class ShellBranches {
   static const String tasksPath = '/tasks';
   static const String tasksName = 'tasks';
 
+  static const String habitsPath = '/habits';
+  static const String habitsName = 'habits';
+
+  static const String goalsPath = '/goals';
+  static const String goalsName = 'goals';
+
+  static const String notesPath = '/notes';
+  static const String notesName = 'notes';
+
+  static const String calendarPath = '/calendar';
+  static const String calendarName = 'calendar';
+
+  static const String assetsPath = '/assets';
+  static const String assetsName = 'assets';
+
+  static const String documentsPath = '/documents';
+  static const String documentsName = 'documents';
+
   static const String settingsPath = '/settings';
   static const String settingsName = 'settings';
 
@@ -51,6 +69,36 @@ abstract final class ShellBranches {
       icon: Icons.check_circle_outline,
       selectedIcon: Icons.check_circle,
       label: 'Tasks',
+    ),
+    ShellDestination(
+      icon: Icons.local_fire_department_outlined,
+      selectedIcon: Icons.local_fire_department,
+      label: 'Habits',
+    ),
+    ShellDestination(
+      icon: Icons.flag_outlined,
+      selectedIcon: Icons.flag,
+      label: 'Goals',
+    ),
+    ShellDestination(
+      icon: Icons.note_outlined,
+      selectedIcon: Icons.note,
+      label: 'Notes',
+    ),
+    ShellDestination(
+      icon: Icons.calendar_today_outlined,
+      selectedIcon: Icons.calendar_today,
+      label: 'Calendar',
+    ),
+    ShellDestination(
+      icon: Icons.inventory_2_outlined,
+      selectedIcon: Icons.inventory_2,
+      label: 'Assets',
+    ),
+    ShellDestination(
+      icon: Icons.description_outlined,
+      selectedIcon: Icons.description,
+      label: 'Documents',
     ),
     ShellDestination(
       icon: Icons.settings_outlined,
@@ -77,6 +125,12 @@ abstract final class ShellBranches {
     required Widget Function(BuildContext context, GoRouterState state) homeBuilder,
     required Widget Function(BuildContext context, GoRouterState state) settingsBuilder,
     required Widget Function(BuildContext context, GoRouterState state) tasksBuilder,
+    required Widget Function(BuildContext context, GoRouterState state) habitsBuilder,
+    required Widget Function(BuildContext context, GoRouterState state) goalsBuilder,
+    required Widget Function(BuildContext context, GoRouterState state) notesBuilder,
+    required Widget Function(BuildContext context, GoRouterState state) calendarBuilder,
+    required Widget Function(BuildContext context, GoRouterState state) assetsBuilder,
+    required Widget Function(BuildContext context, GoRouterState state) documentsBuilder,
   }) =>
       [
         StatefulShellBranch(
@@ -95,6 +149,60 @@ abstract final class ShellBranches {
               path: tasksPath,
               name: tasksName,
               builder: tasksBuilder,
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: habitsPath,
+              name: habitsName,
+              builder: habitsBuilder,
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: goalsPath,
+              name: goalsName,
+              builder: goalsBuilder,
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: notesPath,
+              name: notesName,
+              builder: notesBuilder,
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: calendarPath,
+              name: calendarName,
+              builder: calendarBuilder,
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: assetsPath,
+              name: assetsName,
+              builder: assetsBuilder,
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: documentsPath,
+              name: documentsName,
+              builder: documentsBuilder,
             ),
           ],
         ),
