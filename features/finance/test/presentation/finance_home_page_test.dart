@@ -14,6 +14,7 @@ import 'package:feature_finance/src/domain/value_objects/currency_code.dart';
 import 'package:feature_finance/src/domain/value_objects/money.dart';
 import 'package:feature_finance/src/presentation/navigation/finance_nav_callbacks.dart';
 import 'package:feature_finance/src/presentation/pages/finance_home_page.dart';
+import 'package:feature_finance/src/presentation/viewmodels/finance_change_signal.dart';
 import 'package:feature_finance/src/presentation/viewmodels/finance_home_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -67,6 +68,7 @@ final class _Harness {
         transactionRepository: txnRepo,
       ),
       workspaceContext: WorkspaceContext(initialWorkspaceId: _ws),
+      financeChangeSignal: FinanceChangeSignal(),
     );
   }
 

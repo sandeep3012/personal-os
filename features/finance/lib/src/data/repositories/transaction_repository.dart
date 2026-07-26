@@ -220,6 +220,23 @@ final class TransactionRepository implements ITransactionRepository {
     }
   }
 
+  @override
+  FutureResult<void> restoreTransaction(
+    TransactionId id, {
+    required String workspaceId,
+  }) async {
+    try {
+      await _transactionDao.restore(
+        id.value,
+        workspaceId: workspaceId,
+        restoredAt: DateTime.now(),
+      );
+      return const Result.success(null);
+    } catch (error, stackTrace) {
+      return Result.failure(_translate(error, stackTrace));
+    }
+  }
+
   (DateTime start, DateTime end) _periodToRange(FinancePeriod period) {
     final start = DateTime(period.year, period.month);
     // DateTime(y, m+1, 0) is the last moment of month m (handles December).

@@ -1,0 +1,24 @@
+name: ui_prototype
+description: >
+  Personal OS — clickable UI prototype for DOC-033/DOC-034 design review.
+  Standalone Flutter app. No dependency on the production monorepo
+  (apps/mobile, packages/*, features/*) — deliberately isolated so it can be
+  reviewed and iterated on without any risk to the main application build.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ">=3.11.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

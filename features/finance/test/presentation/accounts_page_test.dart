@@ -8,6 +8,7 @@ import 'package:feature_finance/src/application/use_cases/account/update_account
 import 'package:feature_finance/src/domain/entities/account.dart';
 import 'package:feature_finance/src/domain/entities/transaction.dart';
 import 'package:feature_finance/src/domain/services/balance_calculation_service.dart';
+import 'package:feature_finance/src/domain/specifications/account_can_be_created_specification.dart';
 import 'package:feature_finance/src/domain/specifications/account_can_be_deleted_specification.dart';
 import 'package:feature_finance/src/domain/specifications/account_can_be_updated_specification.dart';
 import 'package:feature_finance/src/domain/value_objects/account_id.dart';
@@ -19,6 +20,7 @@ import 'package:feature_finance/src/domain/value_objects/transaction_id.dart';
 import 'package:feature_finance/src/domain/value_objects/transaction_type.dart';
 import 'package:feature_finance/src/presentation/pages/accounts_page.dart';
 import 'package:feature_finance/src/presentation/viewmodels/accounts_view_model.dart';
+import 'package:feature_finance/src/presentation/viewmodels/finance_change_signal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_core/platform_core.dart';
@@ -79,6 +81,9 @@ final class _Harness {
       createAccountUseCase: CreateAccountUseCase(
         accountRepository: accountRepo,
         idGenerator: _SequentialId(),
+        specification: AccountCanBeCreatedSpecification(
+          accountRepository: accountRepo,
+        ),
       ),
       updateAccountUseCase: UpdateAccountUseCase(
         accountRepository: accountRepo,
@@ -98,6 +103,7 @@ final class _Harness {
         balanceCalculationService: const BalanceCalculationService(),
       ),
       workspaceContext: WorkspaceContext(initialWorkspaceId: _ws),
+      financeChangeSignal: FinanceChangeSignal(),
     );
   }
 
@@ -221,7 +227,51 @@ void main() {
       expect(find.text('Renamed'), findsOneWidget);
       expect(find.text('Original'), findsNothing);
     });
+
+    testWidgets('toggling the Active switch off deactivates the account and '
+        'it stays visible, labeled Inactive', (tester) async {
+      final harness = _Harness()..accountRepo.seed([_account('acc-1', name: 'Toggle Me')]);
+      await tester.pumpWidget(harness.buildPage());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Toggle Me'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SwitchListTile), findsOneWidget);
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      // Still visible (not silently hidden), now labeled Inactive.
+      expect(find.text('Toggle Me'), findsOneWidget);
+      expect(find.textContaining('Inactive'), findsOneWidget);
+    });
+
+    testWidgets('the Active switch does not appear on the Create Account form',
+        (tester) async {
+      final harness = _Harness();
+      await tester.pumpWidget(harness.buildPage());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Create Account'), findsOneWidget);
+      expect(find.byType(SwitchListTile), findsNothing);
+    });
   });
+
+  // Swipe-to-delete (Finance Stabilization accessibility pass) replaced the
+  // previous undiscoverable long-press affordance — mirrors
+  // TransactionsPage's already-established swipe pattern.
+  Future<void> dragAccountTile(WidgetTester tester, String name) async {
+    final dismissible = find.ancestor(
+      of: find.text(name),
+      matching: find.byType(Dismissible),
+    );
+    await tester.drag(dismissible, const Offset(-500, 0));
+    await tester.pumpAndSettle();
+  }
 
   group('AccountsPage — delete', () {
     testWidgets('deleting an account with no transactions removes it',
@@ -230,8 +280,7 @@ void main() {
       await tester.pumpWidget(harness.buildPage());
       await tester.pumpAndSettle();
 
-      await tester.longPress(find.text('Account'));
-      await tester.pumpAndSettle();
+      await dragAccountTile(tester, 'Account');
       await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
       await tester.pumpAndSettle();
 
@@ -247,12 +296,12 @@ void main() {
       await tester.pumpWidget(harness.buildPage());
       await tester.pumpAndSettle();
 
-      await tester.longPress(find.text('Has Transactions'));
-      await tester.pumpAndSettle();
+      await dragAccountTile(tester, 'Has Transactions');
       await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
       await tester.pumpAndSettle();
 
-      // The account remains in the list — deletion was rejected.
+      // The account remains in the list — deletion was rejected, so the
+      // Dismissible snaps back into place.
       expect(find.text('Has Transactions'), findsOneWidget);
       // The failure message (from AccountCanBeDeletedSpecification, surfaced
       // via DeleteAccountUseCase) appears in a SnackBar.
@@ -265,8 +314,7 @@ void main() {
       await tester.pumpWidget(harness.buildPage());
       await tester.pumpAndSettle();
 
-      await tester.longPress(find.text('Account'));
-      await tester.pumpAndSettle();
+      await dragAccountTile(tester, 'Account');
       await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
       await tester.pumpAndSettle();
 

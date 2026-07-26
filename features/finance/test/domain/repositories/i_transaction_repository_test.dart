@@ -19,6 +19,10 @@ import 'package:platform_core/platform_core.dart';
 final class _FakeTransactionRepository implements ITransactionRepository {
   final List<Transaction> _store = [];
 
+  /// Set aside by [softDelete] purely so [restoreTransaction] has something
+  /// to reinstate — mirrors the real DAO's `deleted_at` column.
+  final List<Transaction> _deletedStore = [];
+
   @override
   FutureResult<Transaction?> findById(
     TransactionId id, {
@@ -152,7 +156,18 @@ final class _FakeTransactionRepository implements ITransactionRepository {
     TransactionId id, {
     required String workspaceId,
   }) async {
-    _store.removeWhere((t) => t.id == id);
+    final index = _store.indexWhere((t) => t.id == id);
+    if (index != -1) _deletedStore.add(_store.removeAt(index));
+    return const Result.success(null);
+  }
+
+  @override
+  FutureResult<void> restoreTransaction(
+    TransactionId id, {
+    required String workspaceId,
+  }) async {
+    final index = _deletedStore.indexWhere((t) => t.id == id);
+    if (index != -1) _store.add(_deletedStore.removeAt(index));
     return const Result.success(null);
   }
 }
@@ -544,6 +559,48 @@ void main() {
       );
       expect(result.valueOrNull, hasLength(1));
       expect(result.valueOrNull!.first.id, const TransactionId('keep'));
+    });
+
+    // ── restoreTransaction ────────────────────────────────────────────────────
+
+    test('restoreTransaction reverses a softDelete', () async {
+      await repository.save(_expense('txn-8'));
+      await repository.softDelete(const TransactionId('txn-8'), workspaceId: _ws);
+
+      await repository.restoreTransaction(
+        const TransactionId('txn-8'),
+        workspaceId: _ws,
+      );
+
+      final result = await repository.findByAccount(
+        const AccountId('acc-1'),
+        workspaceId: _ws,
+      );
+      expect(result.valueOrNull!.map((t) => t.id), contains(const TransactionId('txn-8')));
+    });
+
+    test('restoreTransaction is a no-op when the transaction was never deleted', () async {
+      await repository.save(_expense('txn-9'));
+
+      final result = await repository.restoreTransaction(
+        const TransactionId('txn-9'),
+        workspaceId: _ws,
+      );
+
+      expect(result.isSuccess, isTrue);
+      final findResult = await repository.findByAccount(
+        const AccountId('acc-1'),
+        workspaceId: _ws,
+      );
+      expect(findResult.valueOrNull, hasLength(1));
+    });
+
+    test('restoreTransaction is idempotent when the transaction does not exist', () async {
+      final result = await repository.restoreTransaction(
+        const TransactionId('never-existed'),
+        workspaceId: _ws,
+      );
+      expect(result.isSuccess, isTrue);
     });
   });
 }

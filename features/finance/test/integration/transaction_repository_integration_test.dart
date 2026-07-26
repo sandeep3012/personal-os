@@ -207,6 +207,49 @@ void main() {
       );
       expect(byId.valueOrNull, isNull);
     });
+
+    test('restoreTransaction reverses a softDelete against the real SQL engine',
+        () async {
+      await container.transactionRepository.save(_transaction(id: 'txn-1'));
+      await container.transactionRepository.softDelete(
+        const TransactionId('txn-1'),
+        workspaceId: 'ws-1',
+      );
+
+      await container.transactionRepository.restoreTransaction(
+        const TransactionId('txn-1'),
+        workspaceId: 'ws-1',
+      );
+
+      final result = await container.transactionRepository.findByAccount(
+        const AccountId('acc-1'),
+        workspaceId: 'ws-1',
+      );
+      expect(result.valueOrNull!.map((t) => t.id), contains(const TransactionId('txn-1')));
+    });
+
+    test('restoreTransaction does not resurrect a transaction that was never deleted',
+        () async {
+      await container.transactionRepository.save(_transaction(id: 'txn-1'));
+
+      // Restoring an active (never soft-deleted) transaction must be a
+      // pure no-op — it must not, for example, bump updated_at or otherwise
+      // mutate the row.
+      final before = await container.transactionRepository.findById(
+        const TransactionId('txn-1'),
+        workspaceId: 'ws-1',
+      );
+      await container.transactionRepository.restoreTransaction(
+        const TransactionId('txn-1'),
+        workspaceId: 'ws-1',
+      );
+      final after = await container.transactionRepository.findById(
+        const TransactionId('txn-1'),
+        workspaceId: 'ws-1',
+      );
+
+      expect(after.valueOrNull!.updatedAt, before.valueOrNull!.updatedAt);
+    });
   });
 
   group('TransactionRepository — Money round-trip', () {

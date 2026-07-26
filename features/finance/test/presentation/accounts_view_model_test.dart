@@ -8,6 +8,7 @@ import 'package:feature_finance/src/application/use_cases/account/update_account
 import 'package:feature_finance/src/domain/entities/account.dart';
 import 'package:feature_finance/src/domain/entities/transaction.dart';
 import 'package:feature_finance/src/domain/services/balance_calculation_service.dart';
+import 'package:feature_finance/src/domain/specifications/account_can_be_created_specification.dart';
 import 'package:feature_finance/src/domain/specifications/account_can_be_deleted_specification.dart';
 import 'package:feature_finance/src/domain/specifications/account_can_be_updated_specification.dart';
 import 'package:feature_finance/src/domain/value_objects/account_id.dart';
@@ -18,6 +19,7 @@ import 'package:feature_finance/src/domain/value_objects/transaction_date.dart';
 import 'package:feature_finance/src/domain/value_objects/transaction_id.dart';
 import 'package:feature_finance/src/domain/value_objects/transaction_type.dart';
 import 'package:feature_finance/src/presentation/viewmodels/accounts_view_model.dart';
+import 'package:feature_finance/src/presentation/viewmodels/finance_change_signal.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_core/platform_core.dart';
 
@@ -85,6 +87,9 @@ void main() {
       createAccountUseCase: CreateAccountUseCase(
         accountRepository: accountRepo,
         idGenerator: _SequentialId(),
+        specification: AccountCanBeCreatedSpecification(
+          accountRepository: accountRepo,
+        ),
       ),
       updateAccountUseCase: UpdateAccountUseCase(
         accountRepository: accountRepo,
@@ -105,6 +110,7 @@ void main() {
         balanceCalculationService: const BalanceCalculationService(),
       ),
       workspaceContext: workspaceContext,
+      financeChangeSignal: FinanceChangeSignal(),
     );
   });
 
@@ -145,8 +151,10 @@ void main() {
       expect(item.balance.amount, Decimal.parse('800'));
     });
 
-    test('excludes inactive accounts (GetAccountsUseCase filters them)',
-        () async {
+    test('includes inactive accounts (Finance Stabilization: the Accounts '
+        'list must show a deactivated account so it can be reactivated, '
+        'unlike GetAccountsUseCase\'s default active-only behavior used '
+        'elsewhere)', () async {
       accountRepo.seed([
         _account('acc-active', isActive: true),
         _account('acc-inactive', isActive: false),
@@ -154,9 +162,11 @@ void main() {
 
       await viewModel.load();
 
-      expect(viewModel.state.dataOrNull, hasLength(1));
-      expect(viewModel.state.dataOrNull!.first.account.id,
-          const AccountId('acc-active'));
+      expect(viewModel.state.dataOrNull, hasLength(2));
+      expect(
+        viewModel.state.dataOrNull!.map((item) => item.account.id),
+        containsAll([const AccountId('acc-active'), const AccountId('acc-inactive')]),
+      );
     });
 
     test('notifies listeners on each state transition', () async {

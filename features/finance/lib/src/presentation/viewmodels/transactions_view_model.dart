@@ -5,6 +5,7 @@ import 'package:feature_finance/src/application/use_cases/transaction/add_income
 import 'package:feature_finance/src/application/use_cases/transaction/create_transfer_use_case.dart';
 import 'package:feature_finance/src/application/use_cases/transaction/delete_transaction_use_case.dart';
 import 'package:feature_finance/src/application/use_cases/transaction/query_transactions_use_case.dart';
+import 'package:feature_finance/src/application/use_cases/transaction/restore_transaction_use_case.dart';
 import 'package:feature_finance/src/application/use_cases/transaction/update_transaction_use_case.dart';
 import 'package:feature_finance/src/domain/entities/account.dart';
 import 'package:feature_finance/src/domain/entities/transaction.dart';
@@ -15,6 +16,7 @@ import 'package:feature_finance/src/domain/value_objects/payee.dart';
 import 'package:feature_finance/src/domain/value_objects/transaction_date.dart';
 import 'package:feature_finance/src/domain/value_objects/transaction_id.dart';
 import 'package:feature_finance/src/domain/value_objects/transaction_query.dart';
+import 'package:feature_finance/src/presentation/viewmodels/finance_change_signal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:platform_core/platform_core.dart';
 
@@ -39,20 +41,25 @@ final class TransactionsViewModel extends ChangeNotifier {
     required AddIncomeUseCase addIncomeUseCase,
     required UpdateTransactionUseCase updateTransactionUseCase,
     required DeleteTransactionUseCase deleteTransactionUseCase,
+    required RestoreTransactionUseCase restoreTransactionUseCase,
     required CreateTransferUseCase createTransferUseCase,
     required WorkspaceContext workspaceContext,
+    required FinanceChangeSignal financeChangeSignal,
   })  : _getAccountsUseCase = getAccountsUseCase,
         _queryTransactionsUseCase = queryTransactionsUseCase,
         _addExpenseUseCase = addExpenseUseCase,
         _addIncomeUseCase = addIncomeUseCase,
         _updateTransactionUseCase = updateTransactionUseCase,
         _deleteTransactionUseCase = deleteTransactionUseCase,
+        _restoreTransactionUseCase = restoreTransactionUseCase,
         _createTransferUseCase = createTransferUseCase,
-        _workspaceContext = workspaceContext {
+        _workspaceContext = workspaceContext,
+        _financeChangeSignal = financeChangeSignal {
     _workspaceContext.addListener(_handleWorkspaceChanged);
   }
 
   final WorkspaceContext _workspaceContext;
+  final FinanceChangeSignal _financeChangeSignal;
 
   /// The workspace this ViewModel currently operates within — always read
   /// live from [WorkspaceContext], never cached or hardcoded.
@@ -64,6 +71,7 @@ final class TransactionsViewModel extends ChangeNotifier {
   final AddIncomeUseCase _addIncomeUseCase;
   final UpdateTransactionUseCase _updateTransactionUseCase;
   final DeleteTransactionUseCase _deleteTransactionUseCase;
+  final RestoreTransactionUseCase _restoreTransactionUseCase;
   final CreateTransferUseCase _createTransferUseCase;
 
   void _handleWorkspaceChanged() => load();
@@ -114,6 +122,23 @@ final class TransactionsViewModel extends ChangeNotifier {
   /// separate persisted concept (DOC-031 §4.3).
   bool get transfersOnly => _transfersOnly;
 
+  var _searchQuery = '';
+
+  /// The current payee search text, or `''` for no search filter. UI-only
+  /// state — the actual filtering is performed by
+  /// [QueryTransactionsUseCase] via [TransactionQuery.payeeNameContains],
+  /// which already existed and was already tested; this ViewModel only
+  /// wires it to the search field (VPS §2, design principle #6).
+  String get searchQuery => _searchQuery;
+
+  /// Updates the payee search text and reloads. Passing `''` clears the
+  /// search filter — preserves whatever account/category/transfers filters
+  /// are already active.
+  void setSearchQuery(String query) {
+    _searchQuery = query;
+    load();
+  }
+
   /// Updates the account filter and reloads.
   void setAccountFilter(AccountId? accountId) {
     _accountFilter = accountId;
@@ -159,6 +184,7 @@ final class TransactionsViewModel extends ChangeNotifier {
       workspaceId: workspaceId,
       accountId: _accountFilter,
       categoryId: _categoryFilter,
+      payeeNameContains: _searchQuery.isEmpty ? null : _searchQuery,
       pageSize: 200,
     ));
 
@@ -197,7 +223,10 @@ final class TransactionsViewModel extends ChangeNotifier {
       categoryId: categoryId,
       note: note,
     ));
-    if (result.isSuccess) await load();
+    if (result.isSuccess) {
+      _financeChangeSignal.notifyChanged();
+      await load();
+    }
     return result;
   }
 
@@ -219,7 +248,10 @@ final class TransactionsViewModel extends ChangeNotifier {
       categoryId: categoryId,
       note: note,
     ));
-    if (result.isSuccess) await load();
+    if (result.isSuccess) {
+      _financeChangeSignal.notifyChanged();
+      await load();
+    }
     return result;
   }
 
@@ -246,7 +278,10 @@ final class TransactionsViewModel extends ChangeNotifier {
       categoryId: categoryId,
       note: note,
     ));
-    if (result.isSuccess) await load();
+    if (result.isSuccess) {
+      _financeChangeSignal.notifyChanged();
+      await load();
+    }
     return result;
   }
 
@@ -254,12 +289,38 @@ final class TransactionsViewModel extends ChangeNotifier {
   /// which is all [DeleteTransactionUseCase] supports today — its
   /// counterpart is left in place, unchanged from existing use-case
   /// behavior), then reloads on success.
+  ///
+  /// Deletion happens immediately (not deferred behind an Undo timer) so it
+  /// is never lost to the app closing before a timer fires — [TransactionsPage]
+  /// pairs this with [restoreTransaction] to offer Undo on an
+  /// already-committed delete instead.
   Future<Result<void>> deleteTransaction(TransactionId transactionId) async {
     final result = await _deleteTransactionUseCase.execute(DeleteTransactionInput(
       transactionId: transactionId,
       workspaceId: workspaceId,
     ));
-    if (result.isSuccess) await load();
+    if (result.isSuccess) {
+      _financeChangeSignal.notifyChanged();
+      await load();
+    }
+    return result;
+  }
+
+  /// Reverses a [deleteTransaction] call — the backing action for the
+  /// "UNDO" button on the delete SnackBar, then reloads on success.
+  ///
+  /// Finance-internal: [RestoreTransactionUseCase] only ever restores a
+  /// transaction that is currently soft-deleted, and this method exists
+  /// solely to support Undo-after-delete, not a general restore capability.
+  Future<Result<void>> restoreTransaction(TransactionId transactionId) async {
+    final result = await _restoreTransactionUseCase.execute(RestoreTransactionInput(
+      transactionId: transactionId,
+      workspaceId: workspaceId,
+    ));
+    if (result.isSuccess) {
+      _financeChangeSignal.notifyChanged();
+      await load();
+    }
     return result;
   }
 
@@ -284,7 +345,10 @@ final class TransactionsViewModel extends ChangeNotifier {
       date: date,
       note: note,
     ));
-    if (result.isSuccess) await load();
+    if (result.isSuccess) {
+      _financeChangeSignal.notifyChanged();
+      await load();
+    }
     return result;
   }
 }

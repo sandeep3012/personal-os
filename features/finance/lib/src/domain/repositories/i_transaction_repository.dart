@@ -94,4 +94,20 @@ abstract interface class ITransactionRepository {
     TransactionId id, {
     required String workspaceId,
   });
+
+  /// Reverses a prior [softDelete] for the transaction identified by [id]
+  /// within [workspaceId], making it visible to live queries again.
+  ///
+  /// Only affects a transaction that is currently soft-deleted — a no-op
+  /// (still a success) when [id] does not exist or is not soft-deleted, so
+  /// this can never "restore" an active transaction into some new state.
+  ///
+  /// This exists solely to back the Undo affordance on transaction deletion
+  /// within the Finance feature (mirrors [softDelete] exactly) — it is not a
+  /// general-purpose restore/versioning capability and must not be used, or
+  /// extended, as one.
+  FutureResult<void> restoreTransaction(
+    TransactionId id, {
+    required String workspaceId,
+  });
 }

@@ -12,6 +12,7 @@ import 'package:feature_finance/src/domain/value_objects/finance_period.dart';
 import 'package:feature_finance/src/domain/value_objects/money.dart';
 import 'package:feature_finance/src/domain/value_objects/transaction_query.dart';
 import 'package:feature_finance/src/presentation/viewmodels/accounts_view_model.dart';
+import 'package:feature_finance/src/presentation/viewmodels/finance_change_signal.dart';
 import 'package:flutter/foundation.dart';
 
 /// The Finance Dashboard's aggregated view data — a presentation-layer
@@ -72,17 +73,21 @@ final class FinanceHomeViewModel extends ChangeNotifier {
     required GetNetPositionUseCase getNetPositionUseCase,
     required QueryTransactionsUseCase queryTransactionsUseCase,
     required WorkspaceContext workspaceContext,
+    required FinanceChangeSignal financeChangeSignal,
   })  : _getAccountsUseCase = getAccountsUseCase,
         _getAccountBalanceUseCase = getAccountBalanceUseCase,
         _getTotalIncomeUseCase = getTotalIncomeUseCase,
         _getTotalExpensesUseCase = getTotalExpensesUseCase,
         _getNetPositionUseCase = getNetPositionUseCase,
         _queryTransactionsUseCase = queryTransactionsUseCase,
-        _workspaceContext = workspaceContext {
+        _workspaceContext = workspaceContext,
+        _financeChangeSignal = financeChangeSignal {
     _workspaceContext.addListener(_handleWorkspaceChanged);
+    _financeChangeSignal.addListener(_handleFinanceChanged);
   }
 
   final WorkspaceContext _workspaceContext;
+  final FinanceChangeSignal _financeChangeSignal;
 
   /// The workspace this ViewModel currently operates within — always read
   /// live from [WorkspaceContext], never cached or hardcoded.
@@ -97,9 +102,15 @@ final class FinanceHomeViewModel extends ChangeNotifier {
 
   void _handleWorkspaceChanged() => load();
 
+  /// Reacts to a transaction mutation on [TransactionsViewModel] by
+  /// refreshing the dashboard — same rationale as
+  /// [AccountsViewModel._handleFinanceChanged].
+  void _handleFinanceChanged() => refresh();
+
   @override
   void dispose() {
     _workspaceContext.removeListener(_handleWorkspaceChanged);
+    _financeChangeSignal.removeListener(_handleFinanceChanged);
     super.dispose();
   }
 

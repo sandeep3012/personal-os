@@ -60,5 +60,41 @@ void main() {
       final theme = AppThemeBuilder.build(seedColor: _seed, brightness: Brightness.light);
       expect(theme.cardTheme.elevation, AppElevation.card);
     });
+
+    test('the theme refresh populates FAB, progress, segmented-button, divider, and icon themes', () {
+      final theme = AppThemeBuilder.build(seedColor: _seed, brightness: Brightness.light);
+      expect(theme.floatingActionButtonTheme, isNotNull);
+      expect(theme.progressIndicatorTheme, isNotNull);
+      expect(theme.segmentedButtonTheme, isNotNull);
+      expect(theme.dividerTheme, isNotNull);
+      expect(theme.iconTheme, isNotNull);
+    });
+
+    test('FAB elevation matches AppElevation.fab per VPS §1.4', () {
+      final theme = AppThemeBuilder.build(seedColor: _seed, brightness: Brightness.light);
+      expect(theme.floatingActionButtonTheme.elevation, AppElevation.fab);
+    });
+
+    test('FAB uses primary/onPrimary, not the platform default container colors', () {
+      final theme = AppThemeBuilder.build(seedColor: _seed, brightness: Brightness.light);
+      expect(theme.floatingActionButtonTheme.backgroundColor, theme.colorScheme.primary);
+      expect(theme.floatingActionButtonTheme.foregroundColor, theme.colorScheme.onPrimary);
+    });
+
+    test('progress indicator track uses surfaceContainerHighest, not a raw grey', () {
+      final theme = AppThemeBuilder.build(seedColor: _seed, brightness: Brightness.light);
+      expect(theme.progressIndicatorTheme.linearTrackColor, theme.colorScheme.surfaceContainerHighest);
+      expect(theme.progressIndicatorTheme.circularTrackColor, theme.colorScheme.surfaceContainerHighest);
+    });
+
+    test('divider color uses outlineVariant per VPS §2.2', () {
+      final theme = AppThemeBuilder.build(seedColor: _seed, brightness: Brightness.light);
+      expect(theme.dividerTheme.color, theme.colorScheme.outlineVariant);
+    });
+
+    test('default icon size matches AppIconSizes.standard', () {
+      final theme = AppThemeBuilder.build(seedColor: _seed, brightness: Brightness.light);
+      expect(theme.iconTheme.size, AppIconSizes.standard);
+    });
   });
 }

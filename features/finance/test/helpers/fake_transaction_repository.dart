@@ -12,6 +12,13 @@ import 'package:platform_core/platform_core.dart';
 final class FakeTransactionRepository implements ITransactionRepository {
   final List<Transaction> _store = [];
 
+  /// Transactions removed from [_store] via [softDelete], set aside solely
+  /// so [restoreTransaction] has something to reinstate — mirrors the real
+  /// DAO's `deleted_at` column without changing any other method's
+  /// observable behavior (a soft-deleted transaction still vanishes from
+  /// [store] and every query immediately, exactly as before).
+  final List<Transaction> _deletedStore = [];
+
   List<Transaction> get store => List.unmodifiable(_store);
 
   void seed(List<Transaction> transactions) {
@@ -148,7 +155,18 @@ final class FakeTransactionRepository implements ITransactionRepository {
     TransactionId id, {
     required String workspaceId,
   }) async {
-    _store.removeWhere((t) => t.id == id);
+    final index = _store.indexWhere((t) => t.id == id);
+    if (index != -1) _deletedStore.add(_store.removeAt(index));
+    return const Result.success(null);
+  }
+
+  @override
+  FutureResult<void> restoreTransaction(
+    TransactionId id, {
+    required String workspaceId,
+  }) async {
+    final index = _deletedStore.indexWhere((t) => t.id == id);
+    if (index != -1) _store.add(_deletedStore.removeAt(index));
     return const Result.success(null);
   }
 }

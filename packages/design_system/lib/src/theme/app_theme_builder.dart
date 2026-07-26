@@ -1,5 +1,6 @@
 import 'package:design_system/src/theme/app_semantic_colors.dart';
 import 'package:design_system/src/tokens/app_elevation.dart';
+import 'package:design_system/src/tokens/app_icon_sizes.dart';
 import 'package:design_system/src/tokens/app_radius.dart';
 import 'package:design_system/src/tokens/app_spacing.dart';
 import 'package:design_system/src/typography/app_typography.dart';
@@ -51,6 +52,11 @@ abstract final class AppThemeBuilder {
       filledButtonTheme: _filledButtonTheme(colorScheme),
       outlinedButtonTheme: _outlinedButtonTheme(colorScheme),
       textButtonTheme: _textButtonTheme(colorScheme),
+      floatingActionButtonTheme: _floatingActionButtonTheme(colorScheme),
+      progressIndicatorTheme: _progressIndicatorTheme(colorScheme),
+      segmentedButtonTheme: _segmentedButtonTheme(colorScheme, textTheme),
+      dividerTheme: _dividerTheme(colorScheme),
+      iconTheme: _iconTheme(colorScheme),
     );
   }
 
@@ -191,6 +197,65 @@ abstract final class AppThemeBuilder {
         style: TextButton.styleFrom(
           minimumSize: const Size(48, 48),
         ),
+      );
+
+  /// FAB elevation/color per VPS §1.4 — the most prominent interactive
+  /// surface on its screen, same prominence tier as [_dialogTheme].
+  static FloatingActionButtonThemeData _floatingActionButtonTheme(ColorScheme scheme) =>
+      FloatingActionButtonThemeData(
+        elevation: AppElevation.fab,
+        focusElevation: AppElevation.fab,
+        hoverElevation: AppElevation.fab,
+        highlightElevation: AppElevation.fab,
+        backgroundColor: scheme.primary,
+        foregroundColor: scheme.onPrimary,
+      );
+
+  /// Linear/circular progress indicators (VPS §2 — [ProportionBar]'s and
+  /// loading spinners' track) — a visible, consistently-colored track
+  /// instead of each call site relying on the platform default.
+  static ProgressIndicatorThemeData _progressIndicatorTheme(ColorScheme scheme) =>
+      ProgressIndicatorThemeData(
+        color: scheme.primary,
+        linearTrackColor: scheme.surfaceContainerHighest,
+        circularTrackColor: scheme.surfaceContainerHighest,
+      );
+
+  /// Segmented controls (e.g. Expense/Income in a transaction form) —
+  /// selected segment matches [_chipTheme]'s selected color so both
+  /// "choose one" affordances read as the same interaction family.
+  static SegmentedButtonThemeData _segmentedButtonTheme(
+    ColorScheme scheme,
+    TextTheme textTheme,
+  ) =>
+      SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? scheme.secondaryContainer
+                : scheme.surface,
+          ),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.lg)),
+          ),
+          textStyle: WidgetStatePropertyAll(textTheme.labelLarge),
+        ),
+      );
+
+  /// Dividers/list separators (VPS §2.2 "Divider") — always [outlineVariant],
+  /// never a raw grey literal.
+  static DividerThemeData _dividerTheme(ColorScheme scheme) => DividerThemeData(
+        color: scheme.outlineVariant,
+        thickness: 1,
+        space: AppSpacing.md,
+      );
+
+  /// Default icon size/color for bare `Icon` widgets outside AppBar/ListTile
+  /// (which set their own via [_appBarTheme]/[_listTileTheme]) — the
+  /// [AppIconSizes.standard] token, never a per-screen literal.
+  static IconThemeData _iconTheme(ColorScheme scheme) => IconThemeData(
+        size: AppIconSizes.standard,
+        color: scheme.onSurfaceVariant,
       );
 
   /// The [AppSemanticColors] extension for [brightness].

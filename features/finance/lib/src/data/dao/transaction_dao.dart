@@ -226,6 +226,28 @@ final class TransactionDao {
     );
   }
 
+  /// Clears [FinanceSchema.transactionDeletedAt] and bumps
+  /// [FinanceSchema.transactionUpdatedAt] to [restoredAt] — reverses a prior
+  /// [softDelete]. Only ever affects a row that is currently soft-deleted
+  /// (`deleted_at IS NOT NULL`); matches zero rows harmlessly otherwise, so
+  /// this can never "restore" a row that was never deleted in the first
+  /// place. Backs the Finance Undo-delete affordance exclusively — not a
+  /// general-purpose restore mechanism.
+  Future<void> restore(
+    String transactionId, {
+    required String workspaceId,
+    required DateTime restoredAt,
+  }) async {
+    await _executor.execute(
+      'UPDATE ${FinanceSchema.transactionsTable} '
+      'SET ${FinanceSchema.transactionDeletedAt} = ?, ${FinanceSchema.transactionUpdatedAt} = ? '
+      'WHERE ${FinanceSchema.transactionId} = ? '
+      'AND ${FinanceSchema.transactionWorkspaceId} = ? '
+      'AND ${FinanceSchema.transactionDeletedAt} IS NOT NULL',
+      [null, restoredAt.toIso8601String(), transactionId, workspaceId],
+    );
+  }
+
   /// Returns `true` if a non-deleted row with [transactionId] exists within
   /// [workspaceId].
   Future<bool> exists(

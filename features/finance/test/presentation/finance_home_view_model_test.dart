@@ -16,6 +16,7 @@ import 'package:feature_finance/src/domain/value_objects/money.dart';
 import 'package:feature_finance/src/domain/value_objects/transaction_date.dart';
 import 'package:feature_finance/src/domain/value_objects/transaction_id.dart';
 import 'package:feature_finance/src/domain/value_objects/transaction_type.dart';
+import 'package:feature_finance/src/presentation/viewmodels/finance_change_signal.dart';
 import 'package:feature_finance/src/presentation/viewmodels/finance_home_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -96,6 +97,7 @@ void main() {
         transactionRepository: txnRepo,
       ),
       workspaceContext: workspaceContext,
+      financeChangeSignal: FinanceChangeSignal(),
     );
   });
 

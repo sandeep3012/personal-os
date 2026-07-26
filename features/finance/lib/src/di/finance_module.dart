@@ -16,6 +16,7 @@ import 'package:feature_finance/src/application/use_cases/transaction/delete_tra
 import 'package:feature_finance/src/application/use_cases/transaction/get_transactions_by_account_use_case.dart';
 import 'package:feature_finance/src/application/use_cases/transaction/get_transactions_by_period_use_case.dart';
 import 'package:feature_finance/src/application/use_cases/transaction/query_transactions_use_case.dart';
+import 'package:feature_finance/src/application/use_cases/transaction/restore_transaction_use_case.dart';
 import 'package:feature_finance/src/application/use_cases/transaction/update_transaction_use_case.dart';
 import 'package:feature_finance/src/data/dao/account_dao.dart';
 import 'package:feature_finance/src/data/dao/transaction_dao.dart';
@@ -30,6 +31,7 @@ import 'package:feature_finance/src/domain/repositories/i_transaction_repository
 import 'package:feature_finance/src/domain/services/balance_calculation_service.dart';
 import 'package:feature_finance/src/domain/services/category_summary_service.dart';
 import 'package:feature_finance/src/domain/services/transfer_service.dart';
+import 'package:feature_finance/src/domain/specifications/account_can_be_created_specification.dart';
 import 'package:feature_finance/src/domain/specifications/account_can_be_deleted_specification.dart';
 import 'package:feature_finance/src/domain/specifications/account_can_be_updated_specification.dart';
 import 'package:feature_finance/src/domain/specifications/transaction_can_be_created_specification.dart';
@@ -37,6 +39,7 @@ import 'package:feature_finance/src/domain/specifications/transfer_can_be_create
 import 'package:feature_finance/src/presentation/routes/finance_routes.dart';
 import 'package:feature_finance/src/presentation/viewmodels/accounts_view_model.dart';
 import 'package:feature_finance/src/presentation/viewmodels/categories_view_model.dart';
+import 'package:feature_finance/src/presentation/viewmodels/finance_change_signal.dart';
 import 'package:feature_finance/src/presentation/viewmodels/finance_home_view_model.dart';
 import 'package:feature_finance/src/presentation/viewmodels/transactions_view_model.dart';
 import 'package:platform_core/di/i_dependency_registrar.dart';
@@ -134,6 +137,11 @@ final class FinanceModule extends FeatureModule {
     IDependencyRegistrar registrar,
     IServiceLocator locator,
   ) {
+    // FinanceChangeSignal is a lazy singleton (not a per-page factory, unlike
+    // every ViewModel below) — every ViewModel that resolves it must share
+    // the exact same instance for cross-ViewModel synchronization to work.
+    registrar.registerLazySingleton<FinanceChangeSignal>(FinanceChangeSignal.new);
+
     registrar.registerFactory<FinanceHomeViewModel>(
       () => FinanceHomeViewModel(
         getAccountsUseCase: locator.get<GetAccountsUseCase>(),
@@ -143,6 +151,7 @@ final class FinanceModule extends FeatureModule {
         getNetPositionUseCase: locator.get<GetNetPositionUseCase>(),
         queryTransactionsUseCase: locator.get<QueryTransactionsUseCase>(),
         workspaceContext: locator.get<WorkspaceContext>(),
+        financeChangeSignal: locator.get<FinanceChangeSignal>(),
       ),
     );
     registrar.registerFactory<AccountsViewModel>(
@@ -153,6 +162,7 @@ final class FinanceModule extends FeatureModule {
         deleteAccountUseCase: locator.get<DeleteAccountUseCase>(),
         getAccountBalanceUseCase: locator.get<GetAccountBalanceUseCase>(),
         workspaceContext: locator.get<WorkspaceContext>(),
+        financeChangeSignal: locator.get<FinanceChangeSignal>(),
       ),
     );
     registrar.registerFactory<TransactionsViewModel>(
@@ -163,8 +173,10 @@ final class FinanceModule extends FeatureModule {
         addIncomeUseCase: locator.get<AddIncomeUseCase>(),
         updateTransactionUseCase: locator.get<UpdateTransactionUseCase>(),
         deleteTransactionUseCase: locator.get<DeleteTransactionUseCase>(),
+        restoreTransactionUseCase: locator.get<RestoreTransactionUseCase>(),
         createTransferUseCase: locator.get<CreateTransferUseCase>(),
         workspaceContext: locator.get<WorkspaceContext>(),
+        financeChangeSignal: locator.get<FinanceChangeSignal>(),
       ),
     );
     registrar.registerFactory<CategoriesViewModel>(
@@ -231,6 +243,11 @@ final class FinanceModule extends FeatureModule {
     IDependencyRegistrar registrar,
     IServiceLocator locator,
   ) {
+    registrar.registerLazySingleton<AccountCanBeCreatedSpecification>(
+      () => AccountCanBeCreatedSpecification(
+        accountRepository: locator.get<IAccountRepository>(),
+      ),
+    );
     registrar.registerLazySingleton<AccountCanBeDeletedSpecification>(
       () => AccountCanBeDeletedSpecification(
         accountRepository: locator.get<IAccountRepository>(),
@@ -266,6 +283,7 @@ final class FinanceModule extends FeatureModule {
       () => CreateAccountUseCase(
         accountRepository: locator.get<IAccountRepository>(),
         idGenerator: locator.get<IdGenerator>(),
+        specification: locator.get<AccountCanBeCreatedSpecification>(),
       ),
     );
     registrar.registerFactory<UpdateAccountUseCase>(
@@ -325,6 +343,11 @@ final class FinanceModule extends FeatureModule {
     );
     registrar.registerFactory<DeleteTransactionUseCase>(
       () => DeleteTransactionUseCase(
+        transactionRepository: locator.get<ITransactionRepository>(),
+      ),
+    );
+    registrar.registerFactory<RestoreTransactionUseCase>(
+      () => RestoreTransactionUseCase(
         transactionRepository: locator.get<ITransactionRepository>(),
       ),
     );

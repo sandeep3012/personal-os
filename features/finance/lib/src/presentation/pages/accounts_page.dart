@@ -66,16 +66,32 @@ class _AccountsPageState extends State<AccountsPage> {
               itemCount: items.length,
               itemBuilder: (context, index) {
                 final item = items[index];
-                return AccountTile(
-                  icon: _iconFor(item.account.type),
-                  name: item.account.name,
-                  subtitle: item.account.type.name,
-                  balanceText: MoneyText.format(
-                    item.balance.amount,
-                    item.balance.currency.value,
+                final subtitle = item.account.isActive
+                    ? item.account.type.name
+                    : '${item.account.type.name} · Inactive';
+                return Dismissible(
+                  key: ValueKey(item.account.id.value),
+                  direction: DismissDirection.endToStart,
+                  confirmDismiss: (_) => _confirmDelete(context, item.account),
+                  background: Container(
+                    color: Theme.of(context).colorScheme.errorContainer,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Icon(
+                      Icons.delete_outline,
+                      color: Theme.of(context).colorScheme.onErrorContainer,
+                    ),
                   ),
-                  onTap: () => _openAccountForm(context, existing: item.account),
-                  onLongPress: () => _confirmDelete(context, item.account),
+                  child: AccountTile(
+                    icon: _iconFor(item.account.type),
+                    name: item.account.name,
+                    subtitle: subtitle,
+                    balanceText: MoneyText.format(
+                      item.balance.amount,
+                      item.balance.currency.value,
+                    ),
+                    onTap: () => _openAccountForm(context, existing: item.account),
+                  ),
                 );
               },
             ),
@@ -106,6 +122,7 @@ class _AccountsPageState extends State<AccountsPage> {
       text: existing == null ? '0' : existing.initialBalance.amount.toString(),
     );
     final selectedType = ValueNotifier<AccountType>(existing?.type ?? AccountType.savings);
+    final isActive = ValueNotifier<bool>(existing?.isActive ?? true);
 
     return showAppInputSurface(
       context,
@@ -117,6 +134,7 @@ class _AccountsPageState extends State<AccountsPage> {
         currencyController: currencyController,
         balanceController: balanceController,
         selectedType: selectedType,
+        isActive: isActive,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -148,6 +166,18 @@ class _AccountsPageState extends State<AccountsPage> {
               controller: balanceController,
               keyboardType: TextInputType.number,
             ),
+          ] else ...[
+            const SizedBox(height: AppSpacing.sm),
+            ValueListenableBuilder<bool>(
+              valueListenable: isActive,
+              builder: (context, value, _) => SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Active'),
+                subtitle: const Text('Inactive accounts stop accepting new transactions'),
+                value: value,
+                onChanged: (v) => isActive.value = v,
+              ),
+            ),
           ],
         ],
       ),
@@ -161,6 +191,7 @@ class _AccountsPageState extends State<AccountsPage> {
     required TextEditingController currencyController,
     required TextEditingController balanceController,
     required ValueNotifier<AccountType> selectedType,
+    required ValueNotifier<bool> isActive,
   }) async {
     Navigator.of(context).pop();
 
@@ -190,22 +221,31 @@ class _AccountsPageState extends State<AccountsPage> {
       final result = await widget.viewModel.updateAccount(
         accountId: existing.id,
         name: nameController.text,
+        isActive: isActive.value,
       );
       if (!context.mounted) return;
       if (result.isFailure) _showMessage(context, result.exceptionOrNull!.message);
     }
   }
 
-  Future<void> _confirmDelete(BuildContext context, Account account) {
-    return showConfirmationDialog(
-      context,
-      itemDescription: '"${account.name}"',
-      onConfirm: () async {
-        final result = await widget.viewModel.deleteAccount(account.id);
-        if (!context.mounted) return;
-        if (result.isFailure) _showMessage(context, result.exceptionOrNull!.message);
-      },
+  /// Confirms and performs account deletion — used as a [Dismissible]'s
+  /// `confirmDismiss`, so swipe-to-delete (the same discoverable, already-
+  /// established pattern as [TransactionsPage]) replaces the previous
+  /// undiscoverable long-press affordance. Returns `false` (snapping the row
+  /// back into place) whenever the user cancels or the delete itself fails —
+  /// e.g. [AccountCanBeDeletedSpecification] rejecting an account that still
+  /// has active transactions.
+  Future<bool> _confirmDelete(BuildContext context, Account account) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => ConfirmationDialog(itemDescription: '"${account.name}"'),
     );
+    if (confirmed != true) return false;
+
+    final result = await widget.viewModel.deleteAccount(account.id);
+    if (!context.mounted) return result.isSuccess;
+    if (result.isFailure) _showMessage(context, result.exceptionOrNull!.message);
+    return result.isSuccess;
   }
 
   void _showMessage(BuildContext context, String message) {

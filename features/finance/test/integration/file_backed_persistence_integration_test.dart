@@ -98,6 +98,47 @@ void main() {
     expect(result.valueOrNull?.amount.amount, Decimal.parse('250'));
   });
 
+  test('a deleted Transaction stays deleted across a simulated app restart',
+      () async {
+    final firstExecutor = await FileBackedFinanceDatabaseExecutor.open(storageFile);
+    final firstRepos = buildRepositories(firstExecutor);
+    final account = _account('acc-1');
+    await firstRepos.accounts.save(account);
+
+    final txn = _expense('txn-1', account.id, '250');
+    await firstRepos.transactions.save(txn);
+    await firstRepos.transactions.softDelete(txn.id, workspaceId: _ws);
+
+    // Simulate "kill the app and relaunch" immediately after the delete —
+    // this is the exact scenario a deferred/timer-based delete could lose;
+    // softDelete here already persisted synchronously via `execute()`.
+    final secondExecutor = await FileBackedFinanceDatabaseExecutor.open(storageFile);
+    final secondRepos = buildRepositories(secondExecutor);
+
+    final result = await secondRepos.transactions.findById(txn.id, workspaceId: _ws);
+    expect(result.isSuccess, isTrue);
+    expect(result.valueOrNull, isNull, reason: 'a soft-deleted transaction must not reappear after restart');
+  });
+
+  test('a restored Transaction survives a simulated app restart', () async {
+    final firstExecutor = await FileBackedFinanceDatabaseExecutor.open(storageFile);
+    final firstRepos = buildRepositories(firstExecutor);
+    final account = _account('acc-1');
+    await firstRepos.accounts.save(account);
+
+    final txn = _expense('txn-1', account.id, '250');
+    await firstRepos.transactions.save(txn);
+    await firstRepos.transactions.softDelete(txn.id, workspaceId: _ws);
+    await firstRepos.transactions.restoreTransaction(txn.id, workspaceId: _ws);
+
+    final secondExecutor = await FileBackedFinanceDatabaseExecutor.open(storageFile);
+    final secondRepos = buildRepositories(secondExecutor);
+
+    final result = await secondRepos.transactions.findById(txn.id, workspaceId: _ws);
+    expect(result.isSuccess, isTrue);
+    expect(result.valueOrNull, isNotNull);
+  });
+
   test('a Transfer (both legs) persists across a simulated app restart',
       () async {
     final firstExecutor = await FileBackedFinanceDatabaseExecutor.open(storageFile);

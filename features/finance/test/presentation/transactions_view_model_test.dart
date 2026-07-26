@@ -6,6 +6,7 @@ import 'package:feature_finance/src/application/use_cases/transaction/add_income
 import 'package:feature_finance/src/application/use_cases/transaction/create_transfer_use_case.dart';
 import 'package:feature_finance/src/application/use_cases/transaction/delete_transaction_use_case.dart';
 import 'package:feature_finance/src/application/use_cases/transaction/query_transactions_use_case.dart';
+import 'package:feature_finance/src/application/use_cases/transaction/restore_transaction_use_case.dart';
 import 'package:feature_finance/src/application/use_cases/transaction/update_transaction_use_case.dart';
 import 'package:feature_finance/src/domain/entities/account.dart';
 import 'package:feature_finance/src/domain/services/transfer_service.dart';
@@ -16,7 +17,9 @@ import 'package:feature_finance/src/domain/value_objects/account_type.dart';
 import 'package:feature_finance/src/domain/value_objects/category_id.dart';
 import 'package:feature_finance/src/domain/value_objects/currency_code.dart';
 import 'package:feature_finance/src/domain/value_objects/money.dart';
+import 'package:feature_finance/src/domain/value_objects/payee.dart';
 import 'package:feature_finance/src/domain/value_objects/transaction_date.dart';
+import 'package:feature_finance/src/presentation/viewmodels/finance_change_signal.dart';
 import 'package:feature_finance/src/presentation/viewmodels/transactions_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_core/platform_core.dart';
@@ -55,12 +58,14 @@ void main() {
   late FakeAccountRepository accountRepo;
   late FakeTransactionRepository txnRepo;
   late WorkspaceContext workspaceContext;
+  late FinanceChangeSignal financeChangeSignal;
   late TransactionsViewModel viewModel;
 
   setUp(() {
     accountRepo = FakeAccountRepository();
     txnRepo = FakeTransactionRepository();
     workspaceContext = WorkspaceContext(initialWorkspaceId: _ws);
+    financeChangeSignal = FinanceChangeSignal();
 
     viewModel = TransactionsViewModel(
       getAccountsUseCase: GetAccountsUseCase(accountRepository: accountRepo),
@@ -84,6 +89,8 @@ void main() {
           UpdateTransactionUseCase(transactionRepository: txnRepo),
       deleteTransactionUseCase:
           DeleteTransactionUseCase(transactionRepository: txnRepo),
+      restoreTransactionUseCase:
+          RestoreTransactionUseCase(transactionRepository: txnRepo),
       createTransferUseCase: CreateTransferUseCase(
         transactionRepository: txnRepo,
         transferService: TransferService(idGenerator: _SequentialId()),
@@ -91,6 +98,7 @@ void main() {
             TransferCanBeCreatedSpecification(accountRepository: accountRepo),
       ),
       workspaceContext: workspaceContext,
+      financeChangeSignal: financeChangeSignal,
     );
   });
 
@@ -213,6 +221,25 @@ void main() {
     });
   });
 
+  group('TransactionsViewModel — restore', () {
+    test('restoreTransaction reverses a delete and reloads', () async {
+      accountRepo.seed([_account('acc-1')]);
+      await viewModel.load();
+      final created = await viewModel.addExpense(
+        accountId: const AccountId('acc-1'),
+        amount: Money(amount: Decimal.parse('100'), currency: _inr),
+        date: TransactionDate(DateTime(2024, 6, 15)),
+      );
+      await viewModel.deleteTransaction(created.valueOrNull!.id);
+      expect(viewModel.state.dataOrNull, isEmpty);
+
+      final result = await viewModel.restoreTransaction(created.valueOrNull!.id);
+
+      expect(result.isSuccess, isTrue);
+      expect(viewModel.state.dataOrNull, hasLength(1));
+    });
+  });
+
   group('TransactionsViewModel — filtering', () {
     test('setAccountFilter restricts the list to one account', () async {
       accountRepo.seed([_account('acc-a'), _account('acc-b')]);
@@ -281,6 +308,98 @@ void main() {
       viewModel.setAccountFilter(null);
       await Future<void>.delayed(Duration.zero);
       expect(viewModel.state.dataOrNull, hasLength(2));
+    });
+  });
+
+  group('TransactionsViewModel — search', () {
+    test('setSearchQuery restricts the list to matching payees', () async {
+      accountRepo.seed([_account('acc-1')]);
+      await viewModel.load();
+      await viewModel.addExpense(
+        accountId: const AccountId('acc-1'),
+        amount: Money(amount: Decimal.parse('10'), currency: _inr),
+        date: TransactionDate(DateTime(2024, 6, 15)),
+        payee: Payee('Amazon'),
+      );
+      await viewModel.addExpense(
+        accountId: const AccountId('acc-1'),
+        amount: Money(amount: Decimal.parse('20'), currency: _inr),
+        date: TransactionDate(DateTime(2024, 6, 15)),
+        payee: Payee('Starbucks'),
+      );
+
+      viewModel.setSearchQuery('amaz');
+
+      await Future<void>.delayed(Duration.zero);
+      expect(viewModel.state.dataOrNull, hasLength(1));
+      expect(viewModel.state.dataOrNull!.first.payee?.value, 'Amazon');
+    });
+
+    test('search is case-insensitive', () async {
+      accountRepo.seed([_account('acc-1')]);
+      await viewModel.load();
+      await viewModel.addExpense(
+        accountId: const AccountId('acc-1'),
+        amount: Money(amount: Decimal.parse('10'), currency: _inr),
+        date: TransactionDate(DateTime(2024, 6, 15)),
+        payee: Payee('Amazon'),
+      );
+
+      viewModel.setSearchQuery('AMAZON');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(viewModel.state.dataOrNull, hasLength(1));
+    });
+
+    test('clearing the search (empty string) restores the full list',
+        () async {
+      accountRepo.seed([_account('acc-1')]);
+      await viewModel.load();
+      await viewModel.addExpense(
+        accountId: const AccountId('acc-1'),
+        amount: Money(amount: Decimal.parse('10'), currency: _inr),
+        date: TransactionDate(DateTime(2024, 6, 15)),
+        payee: Payee('Amazon'),
+      );
+      await viewModel.addExpense(
+        accountId: const AccountId('acc-1'),
+        amount: Money(amount: Decimal.parse('20'), currency: _inr),
+        date: TransactionDate(DateTime(2024, 6, 15)),
+        payee: Payee('Starbucks'),
+      );
+      viewModel.setSearchQuery('amaz');
+      await Future<void>.delayed(Duration.zero);
+      expect(viewModel.state.dataOrNull, hasLength(1));
+
+      viewModel.setSearchQuery('');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(viewModel.state.dataOrNull, hasLength(2));
+    });
+
+    test('search is preserved alongside an active account filter', () async {
+      accountRepo.seed([_account('acc-a'), _account('acc-b')]);
+      await viewModel.load();
+      await viewModel.addExpense(
+        accountId: const AccountId('acc-a'),
+        amount: Money(amount: Decimal.parse('10'), currency: _inr),
+        date: TransactionDate(DateTime(2024, 6, 15)),
+        payee: Payee('Amazon'),
+      );
+      await viewModel.addExpense(
+        accountId: const AccountId('acc-b'),
+        amount: Money(amount: Decimal.parse('20'), currency: _inr),
+        date: TransactionDate(DateTime(2024, 6, 15)),
+        payee: Payee('Amazon'),
+      );
+
+      viewModel.setAccountFilter(const AccountId('acc-a'));
+      await Future<void>.delayed(Duration.zero);
+      viewModel.setSearchQuery('amaz');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(viewModel.state.dataOrNull, hasLength(1));
+      expect(viewModel.state.dataOrNull!.first.accountId, const AccountId('acc-a'));
     });
   });
 

@@ -1,8 +1,10 @@
 import 'package:application/application.dart';
 import 'package:decimal/decimal.dart';
+import 'package:feature_finance/src/application/support/validation_result_x.dart';
 import 'package:feature_finance/src/domain/entities/account.dart';
 import 'package:feature_finance/src/domain/exceptions/finance_exception.dart';
 import 'package:feature_finance/src/domain/repositories/i_account_repository.dart';
+import 'package:feature_finance/src/domain/specifications/account_can_be_created_specification.dart';
 import 'package:feature_finance/src/domain/value_objects/account_id.dart';
 import 'package:feature_finance/src/domain/value_objects/account_type.dart';
 import 'package:feature_finance/src/domain/value_objects/currency_code.dart';
@@ -34,15 +36,26 @@ final class CreateAccountUseCase
   CreateAccountUseCase({
     required IAccountRepository accountRepository,
     required IdGenerator idGenerator,
+    required AccountCanBeCreatedSpecification specification,
   })  : _accountRepository = accountRepository,
-        _idGenerator = idGenerator;
+        _idGenerator = idGenerator,
+        _specification = specification;
 
   final IAccountRepository _accountRepository;
   final IdGenerator _idGenerator;
+  final AccountCanBeCreatedSpecification _specification;
 
   @override
   Future<Result<Account>> execute(CreateAccountInput input) async {
     try {
+      final validation = await _specification.check(
+        input.name,
+        workspaceId: input.workspaceId,
+      );
+      if (validation.isInvalid) {
+        return Result.failure(validation.toFinanceException());
+      }
+
       if (input.type != AccountType.creditCard &&
           input.initialBalance.amount < Decimal.zero) {
         throw FinanceException(

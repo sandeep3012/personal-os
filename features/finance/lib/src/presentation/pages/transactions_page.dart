@@ -6,7 +6,6 @@ import 'package:feature_finance/src/domain/value_objects/category_id.dart';
 import 'package:feature_finance/src/domain/value_objects/money.dart';
 import 'package:feature_finance/src/domain/value_objects/payee.dart';
 import 'package:feature_finance/src/domain/value_objects/transaction_date.dart';
-import 'package:feature_finance/src/domain/value_objects/transaction_id.dart';
 import 'package:feature_finance/src/domain/value_objects/transaction_type.dart';
 import 'package:feature_finance/src/presentation/navigation/finance_nav_callbacks.dart';
 import 'package:feature_finance/src/presentation/viewmodels/transactions_view_model.dart';
@@ -25,13 +24,15 @@ enum _EntryKind { expense, income, transfer }
 /// the account/transfers filters, [TransactionTile] for each row (swipe to
 /// delete — VPS §5.3.4), [showAppInputSurface] for create/edit.
 ///
-/// Deletion follows the Material 3 Undo pattern (Milestone 5 Part A):
-/// swiping a row hides it immediately and shows a "Transaction deleted"
-/// SnackBar with an UNDO action. The actual [TransactionsViewModel.deleteTransaction]
-/// call is deferred until the SnackBar closes without the user tapping
-/// UNDO — tapping UNDO simply un-hides the row, since nothing was ever
-/// persisted-deleted. This keeps the Undo affordance entirely presentation-
-/// layer: no new use case, no "restore" capability, no persistence change.
+/// Deletion follows the Material 3 Undo pattern (Milestone 5 Part A, revised
+/// during Finance Stabilization): swiping a row deletes it immediately —
+/// [TransactionsViewModel.deleteTransaction] is called right away, not
+/// deferred behind the SnackBar's timer, so the delete is never lost if the
+/// app closes before the SnackBar would have closed on its own (the
+/// deferred version of this had exactly that data-loss window). Tapping
+/// "UNDO" calls [TransactionsViewModel.restoreTransaction], which reverses
+/// the already-committed soft-delete via the Finance-internal
+/// `RestoreTransactionUseCase`.
 ///
 /// [navCallbacks], when supplied, renders the shared Finance navigation
 /// drawer (ADR-003 — callback-based, no `go_router` import here).
@@ -46,10 +47,7 @@ final class TransactionsPage extends StatefulWidget {
 }
 
 class _TransactionsPageState extends State<TransactionsPage> {
-  /// Transaction ids currently hidden from the list pending the Undo
-  /// SnackBar's outcome — see the class doc for why deletion is deferred
-  /// rather than immediate.
-  final _pendingDeleteIds = <String>{};
+  final _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -59,12 +57,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
   @override
   void dispose() {
-    // A page navigated away from while a delete is still pending must not
-    // silently keep the "deleted" row around forever — finalize any
-    // outstanding deletes rather than leaving them in limbo.
-    for (final id in _pendingDeleteIds) {
-      widget.viewModel.deleteTransaction(TransactionId(id));
-    }
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -84,10 +77,25 @@ class _TransactionsPageState extends State<TransactionsPage> {
         appBar: AppBar(
           title: const Text('Transactions'),
           bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(56),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-              child: _buildFilterBar(context),
+            preferredSize: const Size.fromHeight(120),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.xs,
+                  ),
+                  child: AppSearchBar(
+                    hintText: 'Search by payee',
+                    controller: _searchController,
+                    onChanged: widget.viewModel.setSearchQuery,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  child: _buildFilterBar(context),
+                ),
+              ],
             ),
           ),
         ),
@@ -108,10 +116,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
             emptyActionLabel: 'Add Transaction',
             onEmptyAction: () => _openEntryForm(context),
             onRetry: widget.viewModel.load,
-            successBuilder: (context, allItems) {
-              final items = allItems
-                  .where((txn) => !_pendingDeleteIds.contains(txn.id.value))
-                  .toList();
+            successBuilder: (context, items) {
               return ListView.builder(
                 itemCount: items.length,
                 itemBuilder: (context, index) {
@@ -145,35 +150,33 @@ class _TransactionsPageState extends State<TransactionsPage> {
     );
   }
 
-  /// Hides [txn] immediately (via [_pendingDeleteIds]) and shows the Undo
-  /// SnackBar. The real [TransactionsViewModel.deleteTransaction] call only
-  /// happens once the SnackBar closes for a reason other than the user
-  /// tapping UNDO (timeout, another SnackBar replacing it, or manual
-  /// dismissal) — see the class doc for the rationale.
-  void _handleSwipeToDelete(ScaffoldMessengerState messenger, Transaction txn) {
-    final id = txn.id.value;
-    setState(() => _pendingDeleteIds.add(id));
+  /// Deletes [txn] immediately, then shows the Undo SnackBar. Tapping UNDO
+  /// calls [TransactionsViewModel.restoreTransaction] to reverse the
+  /// already-committed soft-delete — see the class doc for why the delete
+  /// itself is never deferred behind the SnackBar's timer.
+  Future<void> _handleSwipeToDelete(
+    ScaffoldMessengerState messenger,
+    Transaction txn,
+  ) async {
+    final result = await widget.viewModel.deleteTransaction(txn.id);
+    if (!mounted) return;
 
-    final controller = messenger.showSnackBar(
+    if (result.isFailure) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(result.exceptionOrNull!.message)),
+      );
+      return;
+    }
+
+    messenger.showSnackBar(
       SnackBar(
         content: const Text('Transaction deleted'),
         action: SnackBarAction(
           label: 'UNDO',
-          onPressed: () {
-            if (!mounted) return;
-            setState(() => _pendingDeleteIds.remove(id));
-          },
+          onPressed: () => widget.viewModel.restoreTransaction(txn.id),
         ),
       ),
     );
-
-    controller.closed.then((reason) {
-      if (!mounted) return;
-      if (reason == SnackBarClosedReason.action) return; // restored via UNDO
-      if (!_pendingDeleteIds.contains(id)) return; // already restored/finalized
-      widget.viewModel.deleteTransaction(txn.id);
-      setState(() => _pendingDeleteIds.remove(id));
-    });
   }
 
   TransactionTileType _tileTypeFor(Transaction txn) {

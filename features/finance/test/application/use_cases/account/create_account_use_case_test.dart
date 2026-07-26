@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:feature_finance/src/application/use_cases/account/create_account_use_case.dart';
 import 'package:feature_finance/src/domain/exceptions/finance_exception.dart';
+import 'package:feature_finance/src/domain/specifications/account_can_be_created_specification.dart';
 import 'package:feature_finance/src/domain/value_objects/account_type.dart';
 import 'package:feature_finance/src/domain/value_objects/currency_code.dart';
 import 'package:feature_finance/src/domain/value_objects/money.dart';
@@ -35,6 +36,7 @@ void main() {
     useCase = CreateAccountUseCase(
       accountRepository: repo,
       idGenerator: _FixedIdGenerator(),
+      specification: AccountCanBeCreatedSpecification(accountRepository: repo),
     );
   });
 
@@ -128,6 +130,53 @@ void main() {
       final result = await useCase.execute(input);
 
       expect(result.isSuccess, isTrue);
+    });
+
+    test('rejects a duplicate account name (case-insensitive)', () async {
+      await useCase.execute(CreateAccountInput(
+        workspaceId: 'ws-1',
+        name: 'HDFC Savings',
+        type: AccountType.savings,
+        currency: _inr,
+        initialBalance: _money('0'),
+      ));
+
+      final result = await useCase.execute(CreateAccountInput(
+        workspaceId: 'ws-1',
+        name: 'hdfc savings',
+        type: AccountType.savings,
+        currency: _inr,
+        initialBalance: _money('0'),
+      ));
+
+      expect(result.isFailure, isTrue);
+      expect(result.exceptionOrNull, isA<FinanceException>());
+      expect(repo.store, hasLength(1));
+    });
+
+    test('rejects an empty account name', () async {
+      final result = await useCase.execute(CreateAccountInput(
+        workspaceId: 'ws-1',
+        name: '   ',
+        type: AccountType.savings,
+        currency: _inr,
+        initialBalance: _money('0'),
+      ));
+
+      expect(result.isFailure, isTrue);
+      expect(result.exceptionOrNull, isA<FinanceException>());
+    });
+
+    test('rejects an account name over 100 characters', () async {
+      final result = await useCase.execute(CreateAccountInput(
+        workspaceId: 'ws-1',
+        name: 'A' * 101,
+        type: AccountType.savings,
+        currency: _inr,
+        initialBalance: _money('0'),
+      ));
+
+      expect(result.isFailure, isTrue);
     });
   });
 }

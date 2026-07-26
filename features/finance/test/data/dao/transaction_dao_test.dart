@@ -343,6 +343,23 @@ void main() {
     });
   });
 
+  group('TransactionDao.restore', () {
+    test('clears deleted_at, sets updated_at, and requires deleted_at IS NOT NULL',
+        () async {
+      final restoredAt = DateTime(2024, 6, 16, 9);
+      await dao.restore('txn-1', workspaceId: 'ws-1', restoredAt: restoredAt);
+
+      final sql = executor.executedStatements.single;
+      expect(sql, contains('SET ${FinanceSchema.transactionDeletedAt} = ?'));
+      expect(sql, contains('${FinanceSchema.transactionUpdatedAt} = ?'));
+      expect(sql, contains('${FinanceSchema.transactionDeletedAt} IS NOT NULL'));
+      expect(
+        executor.executedStatementArgs.single,
+        [null, restoredAt.toIso8601String(), 'txn-1', 'ws-1'],
+      );
+    });
+  });
+
   group('TransactionDao.exists', () {
     test('issues a SELECT 1 ... LIMIT 1 query', () async {
       await dao.exists('txn-1', workspaceId: 'ws-1');

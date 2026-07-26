@@ -6,6 +6,7 @@ import 'package:feature_finance/src/application/use_cases/transaction/add_income
 import 'package:feature_finance/src/application/use_cases/transaction/create_transfer_use_case.dart';
 import 'package:feature_finance/src/application/use_cases/transaction/delete_transaction_use_case.dart';
 import 'package:feature_finance/src/application/use_cases/transaction/query_transactions_use_case.dart';
+import 'package:feature_finance/src/application/use_cases/transaction/restore_transaction_use_case.dart';
 import 'package:feature_finance/src/application/use_cases/transaction/update_transaction_use_case.dart';
 import 'package:feature_finance/src/domain/entities/account.dart';
 import 'package:feature_finance/src/domain/services/transfer_service.dart';
@@ -15,8 +16,10 @@ import 'package:feature_finance/src/domain/value_objects/account_id.dart';
 import 'package:feature_finance/src/domain/value_objects/account_type.dart';
 import 'package:feature_finance/src/domain/value_objects/currency_code.dart';
 import 'package:feature_finance/src/domain/value_objects/money.dart';
+import 'package:feature_finance/src/domain/value_objects/payee.dart';
 import 'package:feature_finance/src/domain/value_objects/transaction_date.dart';
 import 'package:feature_finance/src/presentation/pages/transactions_page.dart';
+import 'package:feature_finance/src/presentation/viewmodels/finance_change_signal.dart';
 import 'package:feature_finance/src/presentation/viewmodels/transactions_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -78,6 +81,8 @@ final class _Harness {
           UpdateTransactionUseCase(transactionRepository: txnRepo),
       deleteTransactionUseCase:
           DeleteTransactionUseCase(transactionRepository: txnRepo),
+      restoreTransactionUseCase:
+          RestoreTransactionUseCase(transactionRepository: txnRepo),
       createTransferUseCase: CreateTransferUseCase(
         transactionRepository: txnRepo,
         transferService: TransferService(idGenerator: _SequentialId()),
@@ -85,6 +90,7 @@ final class _Harness {
             TransferCanBeCreatedSpecification(accountRepository: accountRepo),
       ),
       workspaceContext: WorkspaceContext(initialWorkspaceId: _ws),
+      financeChangeSignal: FinanceChangeSignal(),
     );
   }
 
@@ -243,8 +249,7 @@ void main() {
   // Dismissible's move+resize animation completion time is close to the
   // boundary of a single guessed duration and was observed to be flaky
   // (~500-700ms, varying by run); polling in 100ms steps up to 2s is
-  // deterministic and stays well under the SnackBar's own ~4s auto-dismiss
-  // timer, so it never accidentally settles that too.
+  // deterministic.
   Future<void> dragAndWaitForSnackBar(WidgetTester tester) async {
     await tester.drag(find.byType(Dismissible), const Offset(-500, 0));
     for (var i = 0; i < 20; i++) {
@@ -259,16 +264,16 @@ void main() {
   }
 
   group('TransactionsPage — delete (swipe + Undo SnackBar)', () {
-    // Milestone 4 migration replaced the delete-icon + confirmation-dialog
-    // flow with swipe-to-delete (VPS §5.3.4). Milestone 5 Part A then
-    // replaced *immediate* deletion with the Material 3 Undo pattern: the
-    // row disappears immediately and a "Transaction deleted" SnackBar with
-    // an UNDO action appears; the real
-    // TransactionsViewModel.deleteTransaction call only fires once the
-    // SnackBar closes without UNDO being tapped.
+    // Finance Stabilization revised Milestone 5 Part A's Undo pattern: the
+    // real TransactionsViewModel.deleteTransaction call now fires
+    // immediately on swipe (never deferred behind the SnackBar's timer —
+    // that window used to lose the delete entirely if the app closed
+    // before the SnackBar auto-dismissed). "UNDO" now calls
+    // TransactionsViewModel.restoreTransaction to reverse an
+    // already-committed soft-delete.
 
-    testWidgets('swiping a transaction hides it and shows the Undo SnackBar '
-        'without deleting it yet', (tester) async {
+    testWidgets('swiping a transaction deletes it immediately and shows '
+        'the Undo SnackBar', (tester) async {
       final harness = _Harness()..accountRepo.seed([_account('acc-1')]);
       await harness.viewModel.addExpense(
         accountId: const AccountId('acc-1'),
@@ -278,18 +283,15 @@ void main() {
       await tester.pumpWidget(harness.buildPage());
       await tester.pumpAndSettle();
 
-      // Bounded pumps only — pumpAndSettle would run the SnackBar's own
-      // auto-dismiss timer to completion before returning, which is exactly
-      // the behavior these tests need to observe mid-flight.
       await dragAndWaitForSnackBar(tester);
 
       expect(find.text('Transaction deleted'), findsOneWidget);
       expect(find.text('UNDO'), findsOneWidget);
-      // Not yet actually deleted — the ViewModel's own data still has it.
-      expect(harness.viewModel.state.dataOrNull, hasLength(1));
+      // Already actually deleted — no timer window to lose it in.
+      expect(harness.viewModel.state.dataOrNull, isEmpty);
     });
 
-    testWidgets('tapping UNDO restores the transaction and never deletes it',
+    testWidgets('tapping UNDO restores the deleted transaction',
         (tester) async {
       final harness = _Harness()..accountRepo.seed([_account('acc-1')]);
       await harness.viewModel.addExpense(
@@ -301,28 +303,17 @@ void main() {
       await tester.pumpAndSettle();
 
       await dragAndWaitForSnackBar(tester);
-      expect(find.text('No transactions yet'), findsNothing);
-      // The row itself is hidden (a Dismissible commits its own removal),
-      // but the underlying data is untouched.
-      expect(harness.viewModel.state.dataOrNull, hasLength(1));
+      expect(harness.viewModel.state.dataOrNull, isEmpty);
 
       await tester.tap(find.text('UNDO'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
 
       expect(harness.viewModel.state.dataOrNull, hasLength(1));
       expect(find.textContaining('100'), findsWidgets);
-
-      // Waiting out the SnackBar's duration afterwards must not finalize a
-      // delete that was already undone.
-      await tester.pump(const Duration(seconds: 5));
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(harness.viewModel.state.dataOrNull, hasLength(1));
     });
 
-    testWidgets(
-        'letting the SnackBar time out without tapping UNDO finalizes the '
-        'deletion', (tester) async {
+    testWidgets('the deletion survives the SnackBar timing out without '
+        'UNDO being tapped', (tester) async {
       final harness = _Harness()..accountRepo.seed([_account('acc-1')]);
       await harness.viewModel.addExpense(
         accountId: const AccountId('acc-1'),
@@ -333,18 +324,13 @@ void main() {
       await tester.pumpAndSettle();
 
       await dragAndWaitForSnackBar(tester);
-      expect(harness.viewModel.state.dataOrNull, hasLength(1));
+      expect(harness.viewModel.state.dataOrNull, isEmpty);
 
-      // The SnackBar's real ~4s auto-dismiss Timer does not reliably fire
-      // under flutter_test's fake clock even after many simulated seconds
-      // of pumping, so the timeout is triggered directly here — this drives
-      // the exact same `.closed` completion (with a non-`.action` reason)
-      // that a real timeout produces, exercising the same finalization path.
       ScaffoldMessenger.of(tester.element(find.byType(Scaffold).first))
           .hideCurrentSnackBar(reason: SnackBarClosedReason.timeout);
       await tester.pumpAndSettle();
 
-      expect(harness.viewModel.state.dataOrNull, hasLength(0));
+      expect(harness.viewModel.state.dataOrNull, isEmpty);
       expect(find.text('No transactions yet'), findsOneWidget);
     });
   });
@@ -373,6 +359,89 @@ void main() {
 
       expect(harness.viewModel.transfersOnly, isTrue);
       expect(harness.viewModel.state.dataOrNull, hasLength(2));
+    });
+  });
+
+  group('TransactionsPage — search', () {
+    testWidgets('typing in the search bar filters the visible list live',
+        (tester) async {
+      final harness = _Harness()..accountRepo.seed([_account('acc-1')]);
+      await harness.viewModel.addExpense(
+        accountId: const AccountId('acc-1'),
+        amount: Money(amount: Decimal.parse('10'), currency: _inr),
+        date: TransactionDate(DateTime(2024, 6, 15)),
+        payee: Payee('Amazon'),
+      );
+      await harness.viewModel.addExpense(
+        accountId: const AccountId('acc-1'),
+        amount: Money(amount: Decimal.parse('20'), currency: _inr),
+        date: TransactionDate(DateTime(2024, 6, 15)),
+        payee: Payee('Starbucks'),
+      );
+      await tester.pumpWidget(harness.buildPage());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Amazon'), findsOneWidget);
+      expect(find.text('Starbucks'), findsOneWidget);
+
+      await tester.enterText(find.byType(SearchBar), 'amaz');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Amazon'), findsOneWidget);
+      expect(find.text('Starbucks'), findsNothing);
+    });
+
+    testWidgets('the clear button empties the search and restores the full list',
+        (tester) async {
+      final harness = _Harness()..accountRepo.seed([_account('acc-1')]);
+      await harness.viewModel.addExpense(
+        accountId: const AccountId('acc-1'),
+        amount: Money(amount: Decimal.parse('10'), currency: _inr),
+        date: TransactionDate(DateTime(2024, 6, 15)),
+        payee: Payee('Amazon'),
+      );
+      await harness.viewModel.addExpense(
+        accountId: const AccountId('acc-1'),
+        amount: Money(amount: Decimal.parse('20'), currency: _inr),
+        date: TransactionDate(DateTime(2024, 6, 15)),
+        payee: Payee('Starbucks'),
+      );
+      await tester.pumpWidget(harness.buildPage());
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(SearchBar), 'amaz');
+      await tester.pumpAndSettle();
+      expect(find.text('Starbucks'), findsNothing);
+
+      await tester.tap(find.widgetWithIcon(IconButton, Icons.close));
+      await tester.pumpAndSettle();
+
+      expect(harness.viewModel.searchQuery, isEmpty);
+      expect(find.text('Amazon'), findsOneWidget);
+      expect(find.text('Starbucks'), findsOneWidget);
+    });
+
+    testWidgets('search preserves the existing account filter and does not '
+        'reset it', (tester) async {
+      final harness = _Harness()
+        ..accountRepo
+            .seed([_account('acc-a', name: 'Account A'), _account('acc-b', name: 'Account B')]);
+      await harness.viewModel.addExpense(
+        accountId: const AccountId('acc-a'),
+        amount: Money(amount: Decimal.parse('10'), currency: _inr),
+        date: TransactionDate(DateTime(2024, 6, 15)),
+        payee: Payee('Amazon'),
+      );
+      await tester.pumpWidget(harness.buildPage());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilterChip, 'Account A'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(SearchBar), 'amaz');
+      await tester.pumpAndSettle();
+
+      expect(harness.viewModel.accountFilter, const AccountId('acc-a'));
+      expect(find.text('Amazon'), findsOneWidget);
     });
   });
 

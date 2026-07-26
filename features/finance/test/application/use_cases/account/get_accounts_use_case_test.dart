@@ -84,5 +84,29 @@ void main() {
       expect(result.valueOrNull, hasLength(1));
       expect(result.valueOrNull!.first.id.value, 'active');
     });
+
+    test('includeInactive: true also returns inactive accounts', () async {
+      repo.seed([_account('active'), _account('inactive', isActive: false)]);
+
+      final result = await useCase.execute(const GetAccountsInput(
+        workspaceId: 'ws-1',
+        includeInactive: true,
+      ));
+
+      expect(result.isSuccess, isTrue);
+      expect(result.valueOrNull!.map((a) => a.id.value),
+          containsAll(['active', 'inactive']));
+    });
+
+    test('includeInactive defaults to false, preserving existing callers\' '
+        'behavior', () async {
+      repo.seed([_account('active'), _account('inactive', isActive: false)]);
+
+      final result = await useCase.execute(
+          const GetAccountsInput(workspaceId: 'ws-1'));
+
+      expect(result.valueOrNull!.map((a) => a.id.value),
+          isNot(contains('inactive')));
+    });
   });
 }

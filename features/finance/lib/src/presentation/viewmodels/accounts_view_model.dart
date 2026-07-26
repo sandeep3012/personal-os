@@ -10,6 +10,7 @@ import 'package:feature_finance/src/domain/value_objects/account_id.dart';
 import 'package:feature_finance/src/domain/value_objects/account_type.dart';
 import 'package:feature_finance/src/domain/value_objects/currency_code.dart';
 import 'package:feature_finance/src/domain/value_objects/money.dart';
+import 'package:feature_finance/src/presentation/viewmodels/finance_change_signal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:platform_core/platform_core.dart';
 
@@ -49,16 +50,20 @@ final class AccountsViewModel extends ChangeNotifier {
     required DeleteAccountUseCase deleteAccountUseCase,
     required GetAccountBalanceUseCase getAccountBalanceUseCase,
     required WorkspaceContext workspaceContext,
+    required FinanceChangeSignal financeChangeSignal,
   })  : _getAccountsUseCase = getAccountsUseCase,
         _createAccountUseCase = createAccountUseCase,
         _updateAccountUseCase = updateAccountUseCase,
         _deleteAccountUseCase = deleteAccountUseCase,
         _getAccountBalanceUseCase = getAccountBalanceUseCase,
-        _workspaceContext = workspaceContext {
+        _workspaceContext = workspaceContext,
+        _financeChangeSignal = financeChangeSignal {
     _workspaceContext.addListener(_handleWorkspaceChanged);
+    _financeChangeSignal.addListener(_handleFinanceChanged);
   }
 
   final WorkspaceContext _workspaceContext;
+  final FinanceChangeSignal _financeChangeSignal;
 
   /// The workspace this ViewModel currently operates within — always read
   /// live from [WorkspaceContext], never cached or hardcoded.
@@ -81,9 +86,19 @@ final class AccountsViewModel extends ChangeNotifier {
     load();
   }
 
+  /// Reacts to a transaction mutation on [TransactionsViewModel] (create,
+  /// update, delete, restore, transfer) by refreshing balances — this is
+  /// presentation-layer plumbing only, not a business rule; it does not
+  /// decide *how* a balance is computed (that's still
+  /// [GetAccountBalanceUseCase]'s job), only *when* to recompute it.
+  void _handleFinanceChanged() {
+    refresh();
+  }
+
   @override
   void dispose() {
     _workspaceContext.removeListener(_handleWorkspaceChanged);
+    _financeChangeSignal.removeListener(_handleFinanceChanged);
     super.dispose();
   }
 
@@ -116,7 +131,7 @@ final class AccountsViewModel extends ChangeNotifier {
     notifyListeners();
 
     final accountsResult = await _getAccountsUseCase.execute(
-      GetAccountsInput(workspaceId: workspaceId),
+      GetAccountsInput(workspaceId: workspaceId, includeInactive: true),
     );
 
     if (accountsResult.isFailure) {
